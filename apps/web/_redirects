@@ -1,0 +1,16 @@
+# Cloudflare Pages redirects
+# https://developers.cloudflare.com/pages/platform/redirects/
+
+# Legacy URL support
+/test /scan/ 301
+/fingerprint /scan/ 301
+/track /scan/ 301
+
+# Old Panopticlick paths
+/eff.html /about/ 301
+/faq.html /about/ 301
+/about.html /about/ 301
+/privacy.html /privacy/ 301
+
+# API proxy (if needed)
+/api/* https://api.panopticlick.org/api/:splat 200

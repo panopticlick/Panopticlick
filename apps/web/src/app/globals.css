@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom base styles */
+@layer base {
+  :root {
+    --paper: 244 244 245;
+    --ink: 24 24 27;
+    --highlight: 253 224 71;
+    --redaction: 0 0 0;
+    --alert-red: 239 68 68;
+    --alert-orange: 249 115 22;
+    --alert-green: 34 197 94;
+    --stamp-red: 220 38 38;
+    --stamp-blue: 37 99 235;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-paper text-ink font-serif;
+    font-feature-settings: "liga" 1, "calt" 1;
+  }
+
+  /* Selection styling */
+  ::selection {
+    @apply bg-highlight text-ink;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-highlight ring-offset-2 ring-offset-paper;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-paper-200;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-300 rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-200;
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Document container */
+  .document {
+    @apply bg-paper border border-paper-300 shadow-document rounded-sm p-6;
+    @apply relative overflow-hidden;
+  }
+
+  .document::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    @apply bg-scanlines opacity-30;
+  }
+
+  /* Redacted text effect */
+  .redacted {
+    @apply bg-redaction text-redaction inline-block px-1;
+    @apply cursor-pointer transition-all duration-300;
+  }
+
+  .redacted:hover,
+  .redacted.revealed {
+    @apply bg-highlight text-ink;
+  }
+
+  /* Typewriter text */
+  .typewriter {
+    @apply font-mono overflow-hidden whitespace-nowrap;
+    @apply border-r-2 border-ink;
+    animation: typewriter 2s steps(40) forwards, blink 0.75s step-end infinite;
+  }
+
+  /* Official stamp */
+  .stamp {
+    @apply inline-block px-4 py-2 border-4 rounded-sm font-mono text-sm uppercase;
+    @apply transform -rotate-3 shadow-stamp;
+  }
+
+  .stamp-classified {
+    @apply border-stamp-red text-stamp-red;
+  }
+
+  .stamp-verified {
+    @apply border-stamp-blue text-stamp-blue;
+  }
+
+  /* Evidence tag */
+  .evidence-tag {
+    @apply inline-flex items-center gap-1 px-2 py-0.5;
+    @apply bg-paper-200 border border-paper-300 rounded-sm;
+    @apply font-mono text-xs text-ink-200;
+  }
+
+  /* Section heading with lines */
+  .section-heading {
+    @apply flex items-center gap-4 my-8;
+  }
+
+  .section-heading::before,
+  .section-heading::after {
+    content: '';
+    @apply flex-1 h-px bg-ink-300;
+  }
+
+  .section-heading h2 {
+    @apply font-serif text-2xl font-bold uppercase tracking-wider;
+  }
+
+  /* Highlight marker effect */
+  .marker {
+    @apply relative inline-block;
+  }
+
+  .marker::after {
+    content: '';
+    @apply absolute inset-0 bg-highlight -z-10;
+    @apply transform -rotate-1 scale-105;
+  }
+
+  /* Dossier card */
+  .dossier-card {
+    @apply document;
+    @apply border-l-4 border-l-ink;
+  }
+
+  .dossier-card-header {
+    @apply flex items-start justify-between pb-4 mb-4 border-b border-paper-300;
+  }
+
+  /* Meter / Progress bar */
+  .meter {
+    @apply relative h-4 bg-paper-200 rounded-sm overflow-hidden;
+  }
+
+  .meter-fill {
+    @apply absolute inset-y-0 left-0 bg-ink transition-all duration-500;
+  }
+
+  .meter-danger .meter-fill {
+    @apply bg-alert-red;
+  }
+
+  .meter-warning .meter-fill {
+    @apply bg-alert-orange;
+  }
+
+  .meter-success .meter-fill {
+    @apply bg-alert-green;
+  }
+
+  /* Grid pattern background */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Scan animation overlay */
+  .scan-overlay {
+    @apply absolute inset-0 pointer-events-none overflow-hidden;
+  }
+
+  .scan-overlay::after {
+    content: '';
+    @apply absolute inset-x-0 h-1 bg-gradient-to-b from-transparent via-highlight to-transparent;
+    @apply animate-scan-line;
+  }
+
+  /* Code block */
+  .code-block {
+    @apply bg-ink text-paper-100 font-mono text-sm p-4 rounded-sm overflow-x-auto;
+  }
+
+  /* Classified watermark */
+  .watermark {
+    @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+    @apply text-8xl font-mono font-bold uppercase opacity-5 rotate-[-30deg];
+    @apply pointer-events-none select-none whitespace-nowrap;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  /* Redaction reveal animation */
+  .animate-reveal {
+    animation: redactReveal 0.8s ease-out forwards;
+  }
+
+  /* Glowing pulse */
+  .glow-pulse {
+    @apply animate-pulse-glow;
+  }
+
+  /* Paper texture overlay */
+  .paper-texture {
+    @apply relative;
+  }
+
+  .paper-texture::after {
+    content: '';
+    @apply absolute inset-0 pointer-events-none opacity-10;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+
+  /* Typing cursor */
+  .cursor {
+    @apply inline-block w-0.5 h-5 bg-ink animate-blink ml-1;
+  }
+
+  /* Strikethrough effect */
+  .strikethrough {
+    @apply relative;
+  }
+
+  .strikethrough::after {
+    content: '';
+    @apply absolute left-0 right-0 top-1/2 h-0.5 bg-alert-red transform -rotate-2;
+  }
+
+  /* Confidential bar */
+  .confidential-bar {
+    @apply bg-stamp-red text-paper text-center py-1 font-mono text-xs uppercase tracking-widest;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    @apply bg-white text-black;
+  }
+
+  .document {
+    @apply border-black shadow-none;
+  }
+}
