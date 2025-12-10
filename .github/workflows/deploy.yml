@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build all packages
+        run: pnpm build --filter="@panopticlick/*"
+
       - name: Build Next.js app
         run: |
           cd apps/web

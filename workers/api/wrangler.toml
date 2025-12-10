@@ -10,20 +10,20 @@ account_id = "201945e73bc3a4f6f77de30504c0687f"
 [dev]
 port = 8787
 
-# D1 Database
-[[d1_databases]]
-binding = "DB"
-database_name = "panopticlick"
-database_id = "placeholder-id" # Replace with actual ID after creation
+# D1 Database - Commented out until created in Cloudflare Dashboard
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "panopticlick"
+# database_id = "placeholder-id" # Replace with actual ID after creation
 
-# KV Namespace for caching
-[[kv_namespaces]]
-binding = "CACHE"
-id = "placeholder-id" # Replace with actual ID after creation
+# KV Namespace - Commented out until created in Cloudflare Dashboard
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "placeholder-id" # Replace with actual ID after creation
 
-# Analytics Engine (for entropy stats)
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
+# Analytics Engine - Commented out until needed
+# [[analytics_engine_datasets]]
+# binding = "ANALYTICS"
 
 # Environment variables
 [vars]
