@@ -210,10 +210,10 @@ export function FingerprintChat() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="pointer-events-auto fixed inset-x-4 bottom-4 z-50 flex max-h-[600px] flex-col rounded-3xl border border-paper-300 bg-gradient-to-br from-paper/98 to-paper-100/98 shadow-2xl backdrop-blur-lg sm:inset-x-auto sm:right-6 sm:w-[420px]"
+              className="pointer-events-auto fixed inset-x-4 bottom-4 z-50 flex max-h-[600px] flex-col rounded-3xl border border-gray-200 bg-white shadow-2xl sm:inset-x-auto sm:right-6 sm:w-[420px]"
             >
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-paper-300 p-5">
+              <div className="flex items-center justify-between border-b border-gray-200 p-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-highlight/20 to-highlight/10">
                     <Eye className="h-5 w-5 text-ink animate-pulse" />
@@ -250,15 +250,15 @@ export function FingerprintChat() {
                     }
                   >
                     {message.role === 'assistant' && (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-highlight/10">
-                        <Eye className="h-4 w-4 text-ink-200" />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100">
+                        <Eye className="h-4 w-4 text-gray-600" />
                       </div>
                     )}
                     <div
                       className={
                         message.role === 'assistant'
-                          ? 'flex-1 rounded-2xl bg-paper-100/80 p-4 text-sm leading-relaxed text-ink-100'
-                          : 'rounded-2xl border border-highlight/30 bg-gradient-to-br from-highlight/10 to-highlight/5 p-4 text-sm leading-relaxed text-ink'
+                          ? 'flex-1 rounded-2xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-800'
+                          : 'rounded-2xl border border-highlight/30 bg-highlight/10 p-4 text-sm leading-relaxed text-gray-900'
                       }
                     >
                       {message.content}
@@ -273,10 +273,10 @@ export function FingerprintChat() {
                     animate={{ opacity: 1 }}
                     className="flex items-center gap-3"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-highlight/10">
-                      <Eye className="h-4 w-4 text-ink-200" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                      <Eye className="h-4 w-4 text-gray-600" />
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-ink-300">
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Analyzing...
                     </div>
@@ -288,8 +288,8 @@ export function FingerprintChat() {
 
               {/* Quick Questions */}
               {messages.length <= 2 && (
-                <div className="border-t border-paper-300 p-4">
-                  <p className="mb-3 text-xs font-mono uppercase tracking-wider text-ink-300">
+                <div className="border-t border-gray-200 p-4">
+                  <p className="mb-3 text-xs font-mono uppercase tracking-wider text-gray-500">
                     Quick Start
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -298,7 +298,7 @@ export function FingerprintChat() {
                         key={question}
                         onClick={() => handleQuickQuestion(question)}
                         disabled={isThinking}
-                        className="rounded-full border border-paper-300 bg-paper-100/50 px-3 py-1.5 text-xs text-ink-200 transition-all hover:border-highlight/30 hover:bg-highlight/5 hover:text-ink disabled:opacity-50"
+                        className="rounded-full border border-gray-300 bg-gray-50 px-3 py-1.5 text-xs text-gray-700 transition-all hover:border-highlight/50 hover:bg-highlight/10 hover:text-gray-900 disabled:opacity-50"
                       >
                         {question}
                       </button>
@@ -308,7 +308,7 @@ export function FingerprintChat() {
               )}
 
               {/* Input */}
-              <div className="border-t border-paper-300 p-5">
+              <div className="border-t border-gray-200 p-5">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -322,7 +322,7 @@ export function FingerprintChat() {
                     }}
                     placeholder="Ask about fingerprinting..."
                     disabled={isThinking}
-                    className="flex-1 rounded-full border border-paper-300 bg-paper-100/50 px-4 py-2.5 text-sm text-ink placeholder:text-ink-300 focus:border-highlight/30 focus:outline-none focus:ring-2 focus:ring-highlight/20 disabled:opacity-50"
+                    className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-highlight/50 focus:outline-none focus:ring-2 focus:ring-highlight/20 disabled:opacity-50"
                   />
                   <button
                     onClick={() => sendMessage(input)}
