@@ -40,7 +40,8 @@ TURNSTILE_SECRET = ""
 #   npx wrangler secret put OPENROUTER_API_KEY
 # Or for local dev, create .dev.vars file with:
 #   OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free"
+# Switched to more stable model (Llama 3.3 70B)
+OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 # Production environment configuration
 [env.production]
