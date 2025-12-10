@@ -188,7 +188,7 @@ export default function AboutPage() {
                   GitHub
                 </Link>
                 <Link
-                  href="mailto:contact@panopticlick.org"
+                  href="mailto:hideme@panopticlick.org"
                   className="inline-flex items-center gap-2 px-4 py-2 border border-ink rounded-sm hover:bg-paper-100 transition-colors"
                 >
                   Email Us

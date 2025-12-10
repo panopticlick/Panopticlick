@@ -20,7 +20,7 @@ async function hashIP(ip: string): Promise<string> {
 /**
  * Detect if IP is likely a proxy/VPN/datacenter
  */
-function detectNetworkType(cf: IncomingRequestCfProperties | undefined): {
+function detectNetworkType(cf: IncomingRequestCfProperties | CfProperties<unknown> | undefined): {
   isProxy: boolean;
   isVPN: boolean;
   isTor: boolean;

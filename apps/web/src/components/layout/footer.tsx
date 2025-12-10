@@ -7,7 +7,7 @@ export function Footer() {
     <footer className="bg-ink text-paper py-8 mt-auto">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Main Footer Content */}
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div>
             <Link href="/" className="font-serif font-bold text-lg">
@@ -19,41 +19,68 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Navigation */}
+          {/* Tests */}
           <div>
             <h4 className="font-mono text-sm font-bold uppercase tracking-wider mb-3">
-              Tools
+              Tests
             </h4>
             <nav className="space-y-2 text-sm">
               <Link
-                href="/scan"
+                href="/scan/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 Fingerprint Scan
               </Link>
               <Link
-                href="/tests/webrtc"
+                href="/tests/webrtc/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 WebRTC Leak Test
               </Link>
               <Link
-                href="/tests/dns"
+                href="/tests/dns/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 DNS Leak Test
               </Link>
               <Link
-                href="/tests/blocker"
+                href="/tests/blocker/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 Ad Blocker Test
               </Link>
+            </nav>
+          </div>
+
+          {/* Learn */}
+          <div>
+            <h4 className="font-mono text-sm font-bold uppercase tracking-wider mb-3">
+              Learn
+            </h4>
+            <nav className="space-y-2 text-sm">
               <Link
-                href="/tests/hsts"
+                href="/anatomy/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
-                HSTS Supercookie Demo
+                Anatomy of Tracking
+              </Link>
+              <Link
+                href="/simulation/"
+                className="block text-paper-300 hover:text-paper transition-colors"
+              >
+                AdTech Simulation
+              </Link>
+              <Link
+                href="/defense/"
+                className="block text-paper-300 hover:text-paper transition-colors"
+              >
+                Defense Armory
+              </Link>
+              <Link
+                href="/manifesto/"
+                className="block text-paper-300 hover:text-paper transition-colors"
+              >
+                Manifesto
               </Link>
             </nav>
           </div>
@@ -65,19 +92,19 @@ export function Footer() {
             </h4>
             <nav className="space-y-2 text-sm">
               <Link
-                href="/about"
+                href="/about/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 About
               </Link>
               <Link
-                href="/methodology"
+                href="/methodology/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 Methodology
               </Link>
               <Link
-                href="/privacy"
+                href="/privacy/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 Privacy Policy

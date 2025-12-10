@@ -183,6 +183,7 @@ export interface DefenseStatus {
   overallTier: DefenseTier;
   score: number;
   recommendations: string[];
+  weaknesses?: string[];
 }
 
 // ============================================

@@ -12,5 +12,28 @@
 /about.html /about/ 301
 /privacy.html /privacy/ 301
 
+# Canonical trailing slash routes (avoid 404s on static hosting)
+/scan /scan/ 301
+/tests /tests/ 301
+/tests/webrtc /tests/webrtc/ 301
+/tests/dns /tests/dns/ 301
+/tests/blocker /tests/blocker/ 301
+/tests/hsts /tests/hsts/ 301
+/anatomy /anatomy/ 301
+/anatomy/behavior /anatomy/behavior/ 301
+/anatomy/fingerprinting /anatomy/fingerprinting/ 301
+/anatomy/supercookies /anatomy/supercookies/ 301
+/simulation /simulation/ 301
+/simulation/rtb /simulation/rtb/ 301
+/simulation/cname /simulation/cname/ 301
+/simulation/cookie-sync /simulation/cookie-sync/ 301
+/defense /defense/ 301
+/defense/hardening /defense/hardening/ 301
+/manifesto /manifesto/ 301
+/manifesto/privacy-rights /manifesto/privacy-rights/ 301
+/about /about/ 301
+/privacy /privacy/ 301
+/methodology /methodology/ 301
+
 # API proxy (if needed)
-/api/* https://api.panopticlick.org/api/:splat 200
+/api/* https://api.panopticlick.org/:splat 200

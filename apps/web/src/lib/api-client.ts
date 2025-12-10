@@ -32,13 +32,16 @@ interface ComparisonStats {
 }
 
 // API Configuration
+// Support both legacy and current env names for API base
+const ENV_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+
 const API_CONFIG = {
   development: {
-    baseUrl: 'http://localhost:8787',
+    baseUrl: ENV_BASE || 'http://localhost:8787',
     timeout: 30000,
   },
   production: {
-    baseUrl: 'https://api.panopticlick.org',
+    baseUrl: ENV_BASE || 'https://api.panopticlick.org',
     timeout: 30000,
   },
 } as const;
@@ -117,10 +120,26 @@ async function apiRequest<T>(
     ...(options.headers || {}),
   };
 
-  const response = await fetchWithTimeout(url, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+
+  try {
+    response = await fetchWithTimeout(url, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    // Normalize network and timeout errors
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new APIError('Request timed out', 'TIMEOUT', 408, error);
+    }
+
+    throw new APIError(
+      'Unable to reach Panopticlick API. Falling back to local mode.',
+      'API_UNAVAILABLE',
+      0,
+      error
+    );
+  }
 
   // Handle non-JSON responses
   const contentType = response.headers.get('content-type');
@@ -157,21 +176,75 @@ export const api = {
      */
     async submit(
       fingerprint: FingerprintPayload,
-      options?: { storeData?: boolean; consent?: boolean }
+      options?: { storeData?: boolean; consent?: boolean; turnstileToken?: string }
     ): Promise<{
       success: boolean;
       sessionId: string;
       report: ValuationReport;
       comparison: ComparisonStats;
     }> {
-      return apiRequest('/api/v1/scan', {
+      const consent = options?.consent ?? true;
+
+      // Start session
+      const start = await apiRequest<{
+        success: boolean;
+        sessionId: string;
+      }>('/v1/scan/start', {
+        method: 'POST',
+        body: JSON.stringify({ consent, turnstileToken: options?.turnstileToken }),
+      });
+
+      // Collect fingerprint
+      const collect = await apiRequest<{
+        success: boolean;
+        report: ValuationReport;
+        hashes?: { full: string; hardware: string; software: string };
+      }>('/v1/scan/collect', {
         method: 'POST',
         body: JSON.stringify({
+          sessionId: start.sessionId,
           fingerprint,
-          storeData: options?.storeData ?? false,
-          consent: options?.consent ?? true,
+          consent,
         }),
       });
+
+      // Optional population comparison
+      let comparison: ComparisonStats = {
+        uniqueness: 0,
+        percentile: 0,
+        similarCount: 0,
+        totalScans: 0,
+        componentComparisons: {},
+      };
+
+      if (collect.hashes?.full) {
+        try {
+          const stats = await apiRequest<{
+            found: boolean;
+            rarity?: { score: number; percentile: number; similarFingerprints: number };
+            total?: number;
+          }>(`/v1/stats/compare/${collect.hashes.full}`);
+
+          if (stats.found && stats.rarity) {
+            comparison = {
+              uniqueness: stats.rarity.score,
+              percentile: stats.rarity.percentile,
+              similarCount: stats.rarity.similarFingerprints,
+              totalScans: stats.total ?? 0,
+              componentComparisons: {},
+            };
+          }
+        } catch (err) {
+          console.warn('[api] stats comparison failed', err);
+        }
+      }
+
+      return {
+        success: collect.success,
+        sessionId: start.sessionId,
+        report: collect.report,
+        comparison,
+      };
     },
 
     /**
@@ -179,7 +252,18 @@ export const api = {
      */
     async get(sessionId: string): Promise<ScanSession | null> {
       try {
-        return await apiRequest(`/api/v1/scan/${sessionId}`);
+        const status = await apiRequest<{ exists: boolean; createdAt?: string }>(
+          `/v1/scan/status/${sessionId}`
+        );
+
+        if (!status.exists) return null;
+
+        return {
+          sessionId,
+          createdAt: status.createdAt || new Date().toISOString(),
+          fingerprint: {} as FingerprintPayload,
+          report: {} as ValuationReport,
+        };
       } catch (error) {
         if (error instanceof APIError && error.status === 404) {
           return null;
@@ -192,8 +276,9 @@ export const api = {
      * Delete a scan session
      */
     async delete(sessionId: string): Promise<{ success: boolean }> {
-      return apiRequest(`/api/v1/scan/${sessionId}`, {
-        method: 'DELETE',
+      return apiRequest(`/v1/privacy/opt-out`, {
+        method: 'POST',
+        body: JSON.stringify({ sessionIds: [sessionId] }),
       });
     },
   },
@@ -222,7 +307,7 @@ export const api = {
         }>;
       };
     }> {
-      return apiRequest('/api/v1/rtb/simulate', {
+      return apiRequest('/v1/rtb/simulate', {
         method: 'POST',
         body: JSON.stringify({ fingerprint }),
       });
@@ -236,7 +321,25 @@ export const api = {
       priceRanges: Record<string, { min: number; max: number; avg: number }>;
       topCategories: Array<{ name: string; cpm: number; volume: number }>;
     }> {
-      return apiRequest('/api/v1/rtb/market');
+      const stats = await apiRequest<{
+        cpmDistribution: Record<string, number>;
+        topPersonas: Array<{ id: string; percentage: number }>;
+      }>('/v1/rtb/stats');
+
+      return {
+        averageCPM: 4,
+        priceRanges: {
+          low: { min: 0.5, max: 2, avg: 1.2 },
+          medium: { min: 2, max: 5, avg: 3.5 },
+          high: { min: 5, max: 10, avg: 7 },
+          premium: { min: 10, max: 20, avg: 14 },
+        },
+        topCategories: (stats.topPersonas || []).map((p) => ({
+          name: p.id,
+          cpm: 4,
+          volume: Math.round((p.percentage || 0) * 100),
+        })),
+      };
     },
   },
 
@@ -259,7 +362,26 @@ export const api = {
       provider: string | null;
       isEncrypted: boolean;
     }> {
-      return apiRequest('/api/v1/defense/dns');
+      const res = await apiRequest<{
+        success: boolean;
+        resolver: { ip: string; provider: string; isEncrypted: boolean };
+        leakTest: { passed: boolean; leakedIPs: string[] };
+      }>('/v1/defense/dns');
+
+      return {
+        leaking: !res.leakTest.passed,
+        resolvers: [
+          {
+            ip: res.resolver.ip,
+            hostname: undefined,
+            isp: res.resolver.provider,
+            country: undefined,
+            isSecure: res.resolver.isEncrypted,
+          },
+        ],
+        provider: res.resolver.provider,
+        isEncrypted: res.resolver.isEncrypted,
+      };
     },
 
     /**
@@ -276,10 +398,26 @@ export const api = {
         fix: string;
       }>;
     }> {
-      return apiRequest('/api/v1/defense/recommendations', {
+      const res = await apiRequest<{
+        success: boolean;
+        status: { overallTier: string; score: number; weaknesses?: string[] };
+        hardeningGuide: { steps: Array<{ title: string; description: string }> };
+      }>('/v1/defense/test', {
         method: 'POST',
         body: JSON.stringify({ fingerprint }),
       });
+
+      return {
+        score: res.status.score,
+        tier: res.status.overallTier as 'exposed' | 'basic' | 'protected' | 'hardened' | 'fortress',
+        recommendations: res.hardeningGuide.steps.map((s) => s.title),
+        weaknesses: (res.status.weaknesses || []).map((w) => ({
+          area: w,
+          severity: 'medium',
+          description: w,
+          fix: '',
+        })),
+      };
     },
   },
 
@@ -303,17 +441,40 @@ export const api = {
         }
       >;
     }> {
-      return apiRequest('/api/v1/stats');
+      const res = await apiRequest<{
+        totalScans: number;
+        uniqueFingerprints: number;
+        averageEntropy: number;
+        entropyDistribution: Record<string, number>;
+      }>('/v1/stats/global');
+
+      return {
+        totalScans: res.totalScans,
+        uniqueFingerprints: res.uniqueFingerprints,
+        averageEntropy: res.averageEntropy,
+        componentStats: {},
+      };
     },
 
     /**
      * Compare a fingerprint to the population
      */
     async compare(fingerprint: FingerprintPayload): Promise<ComparisonStats> {
-      return apiRequest('/api/v1/stats/compare', {
-        method: 'POST',
-        body: JSON.stringify({ fingerprint }),
-      });
+      const { generateHashes } = await import('@panopticlick/fingerprint-sdk');
+      const hashes = await generateHashes(fingerprint);
+      const res = await apiRequest<{
+        found: boolean;
+        rarity?: { score: number; percentile: number; similarFingerprints: number };
+        total?: number;
+      }>(`/v1/stats/compare/${hashes.fullHash}`);
+
+      return {
+        uniqueness: res.rarity?.score ?? 0,
+        percentile: res.rarity?.percentile ?? 0,
+        similarCount: res.rarity?.similarFingerprints ?? 0,
+        totalScans: res.total ?? 0,
+        componentComparisons: {},
+      };
     },
 
     /**
@@ -329,7 +490,20 @@ export const api = {
       mean: number;
       stdDev: number;
     }> {
-      return apiRequest('/api/v1/stats/entropy-distribution');
+      const res = await apiRequest<{
+        buckets: Array<{ range: string; count: number; avgEntropy: number }>;
+      }>('/v1/stats/entropy');
+
+      return {
+        buckets: res.buckets.map((b) => ({
+          range: [0, 0] as [number, number],
+          count: b.count,
+          percentage: 0,
+        })),
+        median: 0,
+        mean: 0,
+        stdDev: 0,
+      };
     },
   },
 
@@ -348,7 +522,14 @@ export const api = {
         fingerprint: FingerprintPayload;
       };
     }> {
-      return apiRequest(`/api/v1/privacy/data/${sessionId}`);
+      const res = await apiRequest<{ success: boolean; data?: unknown }>(
+        '/v1/privacy/my-data'
+      );
+
+      return {
+        found: res.success && !!res.data,
+        data: res.data as any,
+      };
     },
 
     /**
@@ -361,8 +542,9 @@ export const api = {
         fingerprints: number;
       };
     }> {
-      return apiRequest(`/api/v1/privacy/data/${sessionId}`, {
-        method: 'DELETE',
+      return apiRequest(`/v1/privacy/opt-out`, {
+        method: 'POST',
+        body: JSON.stringify({ sessionIds: [sessionId] }),
       });
     },
 
@@ -374,7 +556,7 @@ export const api = {
       exportUrl: string;
       expiresAt: string;
     }> {
-      return apiRequest(`/api/v1/privacy/export/${sessionId}`, {
+      return apiRequest(`/v1/privacy/export/${sessionId}`, {
         method: 'POST',
       });
     },
@@ -427,4 +609,3 @@ export function createAPIHook<T, Args extends unknown[]>(
     return { data, error, isLoading, execute };
   };
 }
-

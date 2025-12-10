@@ -6,10 +6,17 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
+import {
+  PrivacyOptOutSchema,
+  PrivacyConsentSchema,
+  PrivacyExportSchema,
+  validateRequest,
+} from '../schemas/validation';
 import type {
   OptOutRequest,
   OptOutResponse,
   MyDataResponse,
+  MyDataExportResponse,
 } from '@panopticlick/types';
 
 const privacy = new Hono<{ Bindings: Env }>();
@@ -20,8 +27,14 @@ const privacy = new Hono<{ Bindings: Env }>();
  */
 privacy.post('/opt-out', async (c) => {
   try {
-    const body = await c.req.json<OptOutRequest>();
-    const { sessionIds, fingerprintHash, email } = body;
+    const body = await c.req.json();
+    const validation = validateRequest(PrivacyOptOutSchema, body);
+
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
+    }
+
+    const { sessionIds, fingerprintHash, email, reason } = validation.data;
 
     const ctx = getRequestContext(c);
     const deletedCount = { sessions: 0, fingerprints: 0 };
@@ -84,6 +97,15 @@ privacy.post('/opt-out', async (c) => {
       indexes: ['privacy_optout'],
     });
 
+    // Record permanent opt-out (new table - GDPR compliance)
+    const optOutId = crypto.randomUUID();
+    await c.env.DB.prepare(`
+      INSERT OR REPLACE INTO opt_outs (id, ip_hash, fingerprint_hash, email, reason, opted_out_at)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+    `)
+      .bind(optOutId, ctx.ipHash, fingerprintHash || null, email || null, reason || null)
+      .run();
+
     const response: OptOutResponse = {
       success: true,
       deletedCount,
@@ -126,14 +148,16 @@ privacy.get('/my-data', async (c) => {
       .bind(ctx.ipHash)
       .all();
 
-    // Get related fingerprints
+    // Get related fingerprints - FIXED: Use single IN query instead of N+1
     const fingerprints: Record<string, unknown>[] = [];
 
     if (sessions.results && sessions.results.length > 0) {
-      const hashes = [...new Set(sessions.results.map((s) => s.fingerprint_hash))];
+      const hashes = [...new Set(sessions.results.map((s) => s.fingerprint_hash))].filter(Boolean);
 
-      for (const hash of hashes) {
-        const fp = await c.env.DB.prepare(
+      if (hashes.length > 0) {
+        // Build parameterized query with IN clause
+        const placeholders = hashes.map(() => '?').join(',');
+        const fpResults = await c.env.DB.prepare(
           `SELECT
             hash,
             entropy_bits,
@@ -141,13 +165,13 @@ privacy.get('/my-data', async (c) => {
             last_seen,
             times_seen
           FROM fingerprints
-          WHERE hash = ?`
+          WHERE hash IN (${placeholders})`
         )
-          .bind(hash)
-          .first();
+          .bind(...hashes)
+          .all();
 
-        if (fp) {
-          fingerprints.push(fp);
+        if (fpResults.results) {
+          fingerprints.push(...fpResults.results);
         }
       }
     }
@@ -212,16 +236,65 @@ privacy.get('/policy', async (c) => {
 });
 
 /**
+ * POST /privacy/export/:sessionId
+ * Return a data-URI JSON export for the session
+ */
+privacy.post('/export/:sessionId', async (c) => {
+  try {
+    const sessionId = c.req.param('sessionId');
+
+    const session = await c.env.DB.prepare(
+      `SELECT id, fingerprint_hash, entropy_bits, country, created_at
+       FROM sessions WHERE id = ?`
+    )
+      .bind(sessionId)
+      .first();
+
+    if (!session) {
+      return c.json({ success: false, error: 'SESSION_NOT_FOUND' }, 404);
+    }
+
+    const fingerprint = await c.env.DB.prepare(
+      `SELECT * FROM fingerprints WHERE hash = ?`
+    )
+      .bind(session.fingerprint_hash)
+      .first();
+
+    const payload = {
+      session,
+      fingerprint,
+      exportedAt: new Date().toISOString(),
+    };
+
+    const json = JSON.stringify(payload, null, 2);
+    const dataUri = `data:application/json,${encodeURIComponent(json)}`;
+
+    const response: MyDataExportResponse = {
+      success: true,
+      exportUrl: dataUri,
+      expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+    };
+
+    return c.json(response);
+  } catch (error) {
+    console.error('Privacy export error:', error);
+    return c.json({ success: false, error: 'EXPORT_FAILED' }, 500);
+  }
+});
+
+/**
  * POST /privacy/consent
  * Record consent preference
  */
 privacy.post('/consent', async (c) => {
-  const body = await c.req.json<{ sessionId: string; consent: boolean }>();
-  const { sessionId, consent } = body;
+  const body = await c.req.json();
+  const validation = validateRequest(PrivacyConsentSchema, body);
 
-  if (!sessionId) {
-    return c.json({ success: false, error: 'Session ID required' }, 400);
+  if (!validation.success) {
+    return c.json({ success: false, error: validation.error }, 400);
   }
+
+  const { sessionId, consent } = validation.data;
 
   await c.env.DB.prepare(
     'UPDATE sessions SET consent_given = ? WHERE id = ?'

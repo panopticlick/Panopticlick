@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { FingerprintChat } from '@/components/ai';
 import './globals.css';
 
 // Use system fonts for reliability - no network dependency
@@ -8,20 +9,23 @@ import './globals.css';
 
 // Metadata
 export const metadata: Metadata = {
+  metadataBase: new URL('https://panopticlick.org'),
   title: {
     template: '%s | Panopticlick',
-    default: 'Panopticlick - Is Your Browser Safe from Tracking?',
+    default: 'Panopticlick: Free Browser Fingerprint Test & Online Privacy Scanner',
   },
   description:
-    'Discover how unique your browser fingerprint is and how much advertisers value your data. Learn to protect your privacy online.',
+    'Test your browser fingerprint for free. See how 94% of browsers are uniquely identifiable. Discover your advertising value in the $595 billion programmatic ad market.',
   keywords: [
-    'browser fingerprint',
-    'privacy test',
-    'tracking protection',
+    'browser fingerprint test',
+    'browser fingerprinting',
+    'online privacy test',
+    'digital fingerprint',
+    'tracking protection test',
     'EFF Panopticlick',
     'ad blocker test',
-    'digital privacy',
-    'browser uniqueness',
+    'browser uniqueness test',
+    'privacy scanner',
   ],
   authors: [{ name: 'Panopticlick' }],
   creator: 'Panopticlick',
@@ -60,10 +64,12 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: '/manifest.json',
+  manifest: '/site.webmanifest',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
     apple: '/apple-touch-icon.png',
   },
 };
@@ -84,6 +90,45 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
     >
+      <head>
+        <link rel="preconnect" href="https://api.panopticlick.org" crossOrigin="" />
+        <script
+          type="application/ld+json"
+          // FAQ rich results focused on fingerprint test & privacy
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: [
+                {
+                  '@type': 'Question',
+                  name: 'Is my browser uniquely identifiable?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Yes, most modern browsers expose enough attributes (canvas, WebGL, fonts, timezone, hardware) to be uniquely identified without cookies. Panopticlick measures that uniqueness as entropy.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Do you store my fingerprint?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Data is only stored if you give consent. You can delete it anytime via the privacy export/delete controls, and IPs are hashed.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'What happens during the scan?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'We collect hardware, software, and capability signals (canvas, WebGL, audio, fonts, screen, UA) then compute hashes, entropy, and an advertising value simulation.',
+                  },
+                },
+              ],
+            }),
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-paper antialiased flex flex-col">
         {/* Skip to content link */}
         <a
@@ -103,6 +148,9 @@ export default function RootLayout({
 
         {/* Global Footer */}
         <Footer />
+
+        {/* AI Chat - Floating bottom right */}
+        <FingerprintChat />
 
         {/* Structured data */}
         <script

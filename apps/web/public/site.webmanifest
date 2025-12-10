@@ -1,0 +1,33 @@
+{
+  "name": "Panopticlick - Browser Fingerprint Test",
+  "short_name": "Panopticlick",
+  "description": "Is your browser safe from tracking? Discover how unique your browser fingerprint is and how much advertisers value your data.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f4f5",
+  "theme_color": "#18181b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["security", "utilities", "privacy"],
+  "lang": "en",
+  "dir": "ltr"
+}

@@ -4,20 +4,28 @@
 
 import { Context, Next } from 'hono';
 
-const ALLOWED_ORIGINS = [
-  'https://panopticlick.org',
-  'https://www.panopticlick.org',
-  'http://localhost:3000',
-  'http://localhost:8787',
-];
+function getAllowedOrigins(env: { ALLOWED_ORIGINS?: string }) {
+  if (env.ALLOWED_ORIGINS) {
+    return env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
+  }
+  return [
+    'https://panopticlick.org',
+    'https://www.panopticlick.org',
+    'http://localhost:3000',
+    'http://localhost:8787',
+  ];
+}
 
 export async function corsMiddleware(c: Context, next: Next) {
+  const ALLOWED_ORIGINS = getAllowedOrigins(c.env as { ALLOWED_ORIGINS?: string });
   const origin = c.req.header('origin');
 
   // Check if origin is allowed
+  // Use strict regex to prevent bypasses like "evil.panopticlick.org" or "evilpanopticlick.org"
+  const isValidSubdomain = origin && /^https:\/\/[a-z0-9-]+\.panopticlick\.org$/.test(origin);
   const isAllowed = origin && (
     ALLOWED_ORIGINS.includes(origin) ||
-    origin.endsWith('.panopticlick.org')
+    isValidSubdomain
   );
 
   // Handle preflight

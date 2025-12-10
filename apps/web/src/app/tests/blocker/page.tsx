@@ -62,7 +62,7 @@ export default function BlockerTestPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <nav className="mb-6 text-sm">
-          <Link href="/tests" className="text-ink-300 hover:text-ink">
+          <Link href="/tests/" className="text-ink-300 hover:text-ink">
             ← Back to Tests
           </Link>
         </nav>
@@ -520,7 +520,7 @@ function ResultsPhase({
         <Button variant="outline" onClick={onRetest}>
           Test Again
         </Button>
-        <Link href="/tests">
+        <Link href="/tests/">
           <Button variant="primary">Run More Tests</Button>
         </Link>
       </div>

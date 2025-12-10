@@ -10,12 +10,23 @@ import {
   Stamp,
   Button,
 } from '@/components/ui';
-import type { DNSLeakResult } from '@panopticlick/fingerprint-sdk';
+import { api } from '@/lib/api-client';
 
 type TestPhase = 'ready' | 'testing' | 'complete';
 
-interface DNSResult extends DNSLeakResult {
+interface DNSResult {
   isDemo?: boolean;
+  leaking: boolean;
+  isEncrypted: boolean;
+  provider: string | null;
+  resolvers: Array<{
+    ip: string;
+    hostname?: string;
+    isp?: string;
+    country?: string;
+    isSecure: boolean;
+  }>;
+  recommendations?: string[];
 }
 
 export default function DNSTestPage() {
@@ -28,9 +39,8 @@ export default function DNSTestPage() {
     setError(null);
 
     try {
-      const sdk = await import('@panopticlick/fingerprint-sdk');
-      const leakResult = await sdk.detectDNSLeak('/api/v1/defense/dns');
-      setResult({ ...leakResult, isDemo: false });
+      const res = await api.defense.dnsLeakTest();
+      setResult({ ...res, isDemo: false, recommendations: [] });
       setPhase('complete');
     } catch (err) {
       // Show demo data with clear indication that this is demonstration mode
@@ -55,7 +65,7 @@ export default function DNSTestPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <nav className="mb-6 text-sm">
-          <Link href="/tests" className="text-ink-300 hover:text-ink">
+          <Link href="/tests/" className="text-ink-300 hover:text-ink">
             ← Back to Tests
           </Link>
         </nav>
@@ -419,7 +429,7 @@ function ResultsPhase({
         )}
 
         {/* Recommendations */}
-        {result.recommendations.length > 0 && (
+        {result?.recommendations && result.recommendations.length > 0 && (
           <DocumentSection title="Recommendations">
             <div className="space-y-3">
               {result.recommendations.map((rec, i) => (
@@ -470,7 +480,7 @@ function ResultsPhase({
         <Button variant="outline" onClick={onRetest}>
           Test Again
         </Button>
-        <Link href="/tests">
+        <Link href="/tests/">
           <Button variant="primary">Run More Tests</Button>
         </Link>
       </div>

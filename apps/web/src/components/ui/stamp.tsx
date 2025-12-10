@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-type StampVariant = 'classified' | 'verified' | 'exposed' | 'protected' | 'custom';
+type StampVariant = 'classified' | 'verified' | 'exposed' | 'protected' | 'denied' | 'custom';
 
 interface StampProps {
   variant?: StampVariant;
@@ -18,6 +18,7 @@ const variantStyles: Record<StampVariant, string> = {
   verified: 'border-stamp-blue text-stamp-blue',
   exposed: 'border-alert-red text-alert-red',
   protected: 'border-alert-green text-alert-green',
+  denied: 'border-ink text-ink',
   custom: '',
 };
 

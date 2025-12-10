@@ -15,6 +15,12 @@ export interface Env {
   // Environment variables
   ENVIRONMENT: string;
   API_VERSION: string;
+  ALLOWED_ORIGINS?: string; // comma separated
+  TURNSTILE_SECRET?: string;
+
+  // AI Chat (OpenRouter)
+  OPENROUTER_API_KEY?: string;
+  OPENROUTER_MODEL?: string;
 }
 
 /**

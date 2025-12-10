@@ -25,7 +25,7 @@ export default function NotFound() {
             <Link href="/">
               <Button variant="primary">Return to Homepage</Button>
             </Link>
-            <Link href="/scan">
+            <Link href="/scan/">
               <Button variant="outline">Start a Scan</Button>
             </Link>
           </div>

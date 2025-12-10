@@ -10,9 +10,11 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@panopticlick/fingerprint-sdk": "workspace:*",
     "@panopticlick/types": "workspace:*",
     "@panopticlick/valuation-engine": "workspace:*",
-    "hono": "^4.4.0"
+    "hono": "^4.4.0",
+    "zod": "4.1.13"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240529.0",

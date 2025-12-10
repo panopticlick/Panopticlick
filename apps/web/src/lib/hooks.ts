@@ -418,7 +418,7 @@ export function useMediaQuery(query: string): boolean {
  */
 export function useCopyToClipboard(): [boolean, (text: string) => Promise<void>] {
   const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const copy = useCallback(async (text: string) => {
     try {

@@ -54,7 +54,7 @@ export default function HSTSTestPage() {
     <div className="bg-paper grid-bg">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <nav className="mb-6 text-sm">
-          <Link href="/tests" className="text-ink-300 hover:text-ink">
+          <Link href="/tests/" className="text-ink-300 hover:text-ink">
             ← Back to Tests
           </Link>
         </nav>
@@ -594,7 +594,7 @@ function ComparisonPhase({ onBack }: { onBack: () => void }) {
         <Button variant="outline" onClick={onBack}>
           Back to Demo
         </Button>
-        <Link href="/tests">
+        <Link href="/tests/">
           <Button variant="primary">Run More Tests</Button>
         </Link>
       </div>

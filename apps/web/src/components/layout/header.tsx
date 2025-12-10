@@ -8,10 +8,12 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Home' },
-  { href: '/scan', label: 'Scan', highlight: true },
-  { href: '/tests', label: 'Tests' },
-  { href: '/about', label: 'About' },
-  { href: '/methodology', label: 'Methodology' },
+  { href: '/scan/', label: 'Scan', highlight: true },
+  { href: '/tests/', label: 'Tests' },
+  { href: '/anatomy/', label: 'Anatomy' },
+  { href: '/simulation/', label: 'Simulation' },
+  { href: '/defense/', label: 'Defense' },
+  { href: '/manifesto/', label: 'Manifesto' },
 ];
 
 function PanoptickLogo({ className }: { className?: string }) {

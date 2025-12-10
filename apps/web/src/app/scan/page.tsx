@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Document,
@@ -8,15 +8,16 @@ import {
   DocumentSection,
   Stamp,
   Button,
-  Redacted,
   EntropyMeter,
-  ScoreMeter,
-  EvidenceTag,
 } from '@/components/ui';
-import { cn, formatCPM, formatNumber, entropyToOneIn } from '@/lib/utils';
+import { formatCPM, entropyToOneIn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
 import type { FingerprintPayload, ValuationReport } from '@panopticlick/types';
 
+// Note: metadata is in layout.tsx or metadata.ts for client components
+
 type ScanPhase = 'consent' | 'scanning' | 'analyzing' | 'complete';
+type ApiStatus = 'idle' | 'pending' | 'synced' | 'local-only' | 'failed';
 
 export default function ScanPage() {
   const [phase, setPhase] = useState<ScanPhase>('consent');
@@ -24,14 +25,23 @@ export default function ScanPage() {
   const [report, setReport] = useState<ValuationReport | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportUrl, setExportUrl] = useState<string | null>(null);
+  const [storeData, setStoreData] = useState(false);
+  const [apiStatus, setApiStatus] = useState<ApiStatus>('idle');
 
   const runScan = useCallback(async () => {
     setPhase('scanning');
     setProgress(0);
+    setError(null);
+    setApiStatus('idle');
 
     try {
-      // Dynamic import of fingerprint SDK
+      // Dynamic imports to keep bundle light
       const sdk = await import('@panopticlick/fingerprint-sdk');
+      const { generateValuationReport } = await import('@panopticlick/valuation-engine');
 
       const steps = [
         { name: 'Collecting canvas fingerprint...', progress: 10 },
@@ -43,40 +53,95 @@ export default function ScanPage() {
         { name: 'Finalizing collection...', progress: 95 },
       ];
 
-      // Simulate step progression
       for (const step of steps) {
         setCurrentStep(step.name);
         setProgress(step.progress);
         await new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
       }
 
-      // Actually collect fingerprint
+      // Collect fingerprint
       const fp = await sdk.collectFingerprint({
         debug: process.env.NODE_ENV === 'development',
-        consentGiven: true,
+        consentGiven: storeData,
       });
 
       setFingerprint(fp);
       setProgress(100);
       setCurrentStep('Collection complete!');
-
-      // Move to analysis
-      await new Promise((r) => setTimeout(r, 500));
       setPhase('analyzing');
 
-      // Generate report
-      const { generateValuationReport } = await import('@panopticlick/valuation-engine');
-      const valuationReport = generateValuationReport(fp);
-      setReport(valuationReport);
+      // Generate a local valuation immediately so the UI is never blocked on the API
+      const localReport = generateValuationReport(fp);
+      setReport(localReport);
+      setSessionId(fp.meta.sessionId);
 
-      // Complete
-      await new Promise((r) => setTimeout(r, 800));
+      try {
+        localStorage.setItem(
+          'panopticlick:lastScan',
+          JSON.stringify({ sessionId: fp.meta.sessionId, report: localReport })
+        );
+      } catch {
+        // ignore storage failures
+      }
+
+      // Optional server sync for comparison stats + persistence
+      if (storeData) {
+        setApiStatus('pending');
+        try {
+          const response = await api.scan.submit(fp, {
+            consent: true,
+          });
+
+          setReport(response.report);
+          setSessionId(response.sessionId);
+          setApiStatus('synced');
+
+          try {
+            localStorage.setItem(
+              'panopticlick:lastScan',
+              JSON.stringify({ sessionId: response.sessionId, report: response.report })
+            );
+          } catch {
+            // ignore storage failures
+          }
+        } catch (err) {
+          console.error('API sync failed:', err);
+          setApiStatus('failed');
+          setError('API unreachable, showing local-only report.');
+        }
+      } else {
+        setApiStatus('local-only');
+      }
+
       setPhase('complete');
     } catch (error) {
       console.error('Scan error:', error);
+      setError('Scan failed. Please try again.');
       setCurrentStep('Error during scan. Please try again.');
+      setPhase('consent');
     }
-  }, []);
+  }, [storeData]);
+
+  const handleExport = useCallback(async () => {
+    if (!sessionId || apiStatus !== 'synced') return;
+    setExporting(true);
+    setError(null);
+    try {
+      const res = await api.privacy.exportData(sessionId);
+      setExportUrl(res.exportUrl);
+      const a = document.createElement('a');
+      a.href = res.exportUrl;
+      a.download = `panopticlick-export-${sessionId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Export error:', err);
+      setError('Export failed, please try again later');
+    } finally {
+      setExporting(false);
+    }
+  }, [sessionId, apiStatus]);
 
   return (
     <div className="min-h-screen bg-paper grid-bg">
@@ -84,6 +149,9 @@ export default function ScanPage() {
       <div className="confidential-bar">Investigation in Progress</div>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Semantic H1 for SEO */}
+        <h1 className="sr-only">Browser Fingerprint Scanner</h1>
+
         <AnimatePresence mode="wait">
           {/* Consent Phase */}
           {phase === 'consent' && (
@@ -93,7 +161,12 @@ export default function ScanPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <ConsentPhase onAccept={runScan} />
+              <ConsentPhase
+                onAccept={runScan}
+                error={error}
+                storeData={storeData}
+                onToggleStore={setStoreData}
+              />
             </motion.div>
           )}
 
@@ -128,7 +201,16 @@ export default function ScanPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <ResultsPhase report={report} fingerprint={fingerprint} />
+              <ResultsPhase
+                report={report}
+                fingerprint={fingerprint}
+                sessionId={sessionId}
+                onExport={handleExport}
+                exporting={exporting}
+                exportUrl={exportUrl}
+                apiStatus={apiStatus}
+                optedIn={storeData}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -137,8 +219,49 @@ export default function ScanPage() {
   );
 }
 
+function StorageBadge({ apiStatus, optedIn }: { apiStatus: ApiStatus; optedIn: boolean }) {
+  let text = 'Local-only';
+  let tone = 'bg-paper-200 text-ink-300 border border-paper-300';
+
+  switch (apiStatus) {
+    case 'synced':
+      text = 'Stored on server for comparison';
+      tone = 'bg-alert-green/10 text-alert-green border border-alert-green/30';
+      break;
+    case 'pending':
+      text = 'Syncing to API...';
+      tone = 'bg-highlight/20 text-ink border border-highlight/40';
+      break;
+    case 'failed':
+      text = 'Local-only (API unreachable)';
+      tone = 'bg-alert-orange/10 text-alert-orange border border-alert-orange/30';
+      break;
+    case 'local-only':
+      text = optedIn ? 'Local-only' : 'Local-only (not uploaded)';
+      break;
+    default:
+      break;
+  }
+
+  return (
+    <span className={`px-2 py-1 rounded-sm font-mono text-xs ${tone}`}>
+      {text}
+    </span>
+  );
+}
+
 // Consent Phase Component
-function ConsentPhase({ onAccept }: { onAccept: () => void }) {
+function ConsentPhase({
+  onAccept,
+  error,
+  storeData,
+  onToggleStore,
+}: {
+  onAccept: () => void;
+  error: string | null;
+  storeData: boolean;
+  onToggleStore: (value: boolean) => void;
+}) {
   return (
     <Document variant="classified" watermark="CONSENT REQUIRED">
       <DocumentHeader
@@ -148,6 +271,12 @@ function ConsentPhase({ onAccept }: { onAccept: () => void }) {
       />
 
       <div className="space-y-6">
+        {error && (
+          <div className="rounded-sm border border-alert-red/50 bg-alert-red/10 px-4 py-3 text-sm text-alert-red">
+            {error}
+          </div>
+        )}
+
         <div className="prose prose-lg max-w-none">
           <p>
             This investigation will collect the following information from your browser:
@@ -181,6 +310,24 @@ function ConsentPhase({ onAccept }: { onAccept: () => void }) {
             <li>• You can delete your data at any time</li>
           </ul>
         </div>
+
+        <label className="flex items-start gap-3 p-4 border border-paper-300 rounded-sm bg-paper-100">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={storeData}
+            onChange={(e) => onToggleStore(e.target.checked)}
+          />
+          <div className="space-y-1">
+            <div className="font-serif font-bold">
+              Share anonymized results to improve stats (optional)
+            </div>
+            <p className="text-sm text-ink-200">
+              When enabled we send hashed IP + fingerprint to our API for population comparisons.
+              Leave unchecked to keep everything 100% local on this device.
+            </p>
+          </div>
+        </label>
 
         <div className="flex justify-center gap-4 pt-4">
           <Button variant="outline" onClick={() => window.history.back()}>
@@ -295,18 +442,22 @@ function AnalyzingPhase() {
 function ResultsPhase({
   report,
   fingerprint,
+  sessionId,
+  onExport,
+  exporting,
+  exportUrl,
+  apiStatus,
+  optedIn,
 }: {
   report: ValuationReport;
   fingerprint: FingerprintPayload;
+  sessionId: string | null;
+  onExport: () => void;
+  exporting: boolean;
+  exportUrl: string | null;
+  apiStatus: ApiStatus;
+  optedIn: boolean;
 }) {
-  const [revealedSections, setRevealedSections] = useState<Set<string>>(
-    new Set()
-  );
-
-  const revealSection = (section: string) => {
-    setRevealedSections((prev) => new Set([...prev, section]));
-  };
-
   const downloadReport = useCallback(() => {
     const exportData = {
       generatedAt: new Date().toISOString(),
@@ -349,6 +500,55 @@ function ResultsPhase({
           caseNumber={report.meta.reportId}
           date={new Date(report.meta.generatedAt)}
         />
+
+        {(apiStatus === 'failed' || apiStatus === 'local-only') && (
+          <div className={`mb-4 rounded-sm p-3 text-sm border ${
+            apiStatus === 'failed'
+              ? 'bg-alert-orange/10 border-alert-orange/30 text-alert-orange'
+              : 'bg-paper-200 border-paper-300 text-ink-300'
+          }`}>
+            {apiStatus === 'failed'
+              ? 'The API could not be reached. This report was generated locally; server export and comparison are disabled.'
+              : 'You chose local-only mode. Nothing was uploaded; export is limited to the local report.'}
+          </div>
+        )}
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between border border-paper-300 rounded-sm p-4 bg-paper-100">
+        <div className="text-sm text-ink-200">
+          <div className="font-mono text-xs uppercase tracking-wider text-ink-300">Session ID</div>
+          <div className="font-mono break-all">{sessionId || fingerprint.meta.sessionId}</div>
+        </div>
+        <div className="flex flex-col gap-2 md:items-end">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={downloadReport}>
+              Download Client Report
+            </Button>
+            <Button
+              variant="outline"
+              disabled={apiStatus !== 'synced' || !sessionId || exporting}
+              onClick={onExport}
+            >
+              {exporting ? 'Exporting...' : 'Export from Server'}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center text-xs text-ink-300">
+            <span className="uppercase tracking-wider">Storage</span>
+            <StorageBadge apiStatus={apiStatus} optedIn={optedIn} />
+          </div>
+          {apiStatus !== 'synced' && (
+            <p className="text-[11px] text-ink-300">
+              Server export becomes available once syncing succeeds.
+            </p>
+          )}
+        </div>
+      </div>
+
+        {exportUrl && (
+          <div className="text-xs text-ink-300 mt-2">
+            Export generated. You can use this link again:
+            <span className="underline break-all"> {exportUrl}</span>
+          </div>
+        )}
 
         {/* Key Findings */}
         <DocumentSection title="Key Findings">
@@ -513,6 +713,131 @@ function ResultsPhase({
         <Stamp variant={report.defenses.score >= 50 ? 'protected' : 'exposed'}>
           {report.defenses.overallTier}
         </Stamp>
+      </div>
+
+      {/* Educational Content Section */}
+      <div className="mt-16 prose prose-lg max-w-none">
+        <h2 className="font-serif text-3xl font-bold mb-6">
+          What Is a Browser Fingerprint?
+        </h2>
+
+        <p className="text-xl leading-relaxed mb-6">
+          Think of your browser fingerprint as your digital DNA. Just like your real fingerprint
+          is unique to you, your browser fingerprint is a unique combination of all the tiny
+          details about how your browser is configured.
+        </p>
+
+        <p className="mb-6">
+          Here's the weird part: none of these details seem sensitive on their own. Your screen
+          resolution? Who cares. Your timezone? Boring. Your installed fonts? Totally random.
+          But combine 50+ of these "boring" details, and suddenly you're one in a million.
+          Literally.
+        </p>
+
+        <div className="bg-paper-100 p-6 rounded-sm my-8 not-prose">
+          <h3 className="font-mono text-lg font-bold mb-4">How Fingerprinting Beats Cookies</h3>
+          <div className="grid md:grid-cols-2 gap-4 text-sm">
+            <div className="p-4 bg-paper rounded-sm border border-paper-300">
+              <div className="font-bold mb-2">🍪 Cookies</div>
+              <ul className="space-y-1 text-ink-200">
+                <li>• Can be deleted by users</li>
+                <li>• Blocked by private browsing</li>
+                <li>• Visible in browser settings</li>
+                <li>• Regulated by GDPR/CCPA</li>
+              </ul>
+            </div>
+            <div className="p-4 bg-ink text-paper rounded-sm">
+              <div className="font-bold mb-2 text-highlight">🖐️ Fingerprints</div>
+              <ul className="space-y-1 text-paper-300">
+                <li>• Cannot be deleted</li>
+                <li>• Works in private mode</li>
+                <li>• Invisible to users</li>
+                <li>• Unregulated gray area</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="font-serif text-3xl font-bold mb-6 mt-12">
+          Understanding Your Scan Results
+        </h2>
+
+        <p className="mb-6">
+          Let me break down what we just collected and what it means for your privacy:
+        </p>
+
+        <h3 className="font-serif text-xl font-bold mb-4">Entropy: Your Uniqueness Score</h3>
+        <p className="mb-6">
+          Entropy is measured in "bits of identifying information." Each bit doubles the number
+          of people you can be distinguished from. With 10 bits, you're one of 1,024. With 20 bits,
+          one of a million. The average browser today has 33+ bits of entropy — that's enough to
+          uniquely identify you among every human on Earth.
+        </p>
+
+        <h3 className="font-serif text-xl font-bold mb-4">CPM: What You're Worth</h3>
+        <p className="mb-6">
+          CPM stands for "Cost Per Mille" — the price advertisers pay per 1,000 ad impressions.
+          Your CPM depends on your demographics, interests, and behavior. A "high-value" user
+          (think: wealthy, employed, ready to buy) might be worth $10-20 CPM. A random visitor
+          might be worth $0.50. We simulate what advertisers would bid for you.
+        </p>
+
+        <h3 className="font-serif text-xl font-bold mb-4">Privacy Score: Your Protection Level</h3>
+        <p className="mb-6">
+          We check what defenses you have in place. Are you blocking trackers? Using a VPN?
+          Running a privacy-focused browser? Each protection adds to your score. A score under
+          40 means you're basically naked online. Over 70 means you're taking privacy seriously.
+        </p>
+
+        <h2 className="font-serif text-3xl font-bold mb-6 mt-12">
+          What Websites Actually See
+        </h2>
+
+        <p className="mb-6">
+          Every single data point we collected? Websites can see all of it. Without asking.
+          Without warning. Without your consent. Here's a sample of what gets transmitted
+          automatically when you load any webpage:
+        </p>
+
+        <div className="bg-ink text-paper p-6 rounded-sm font-mono text-sm my-8 not-prose">
+          <div className="text-paper-300 mb-2">// Data transmitted on every page load</div>
+          <div className="space-y-1">
+            <div><span className="text-highlight">userAgent:</span> "Mozilla/5.0 (Macintosh; Intel...)"</div>
+            <div><span className="text-highlight">screenResolution:</span> [2560, 1440]</div>
+            <div><span className="text-highlight">colorDepth:</span> 24</div>
+            <div><span className="text-highlight">timezone:</span> "America/New_York"</div>
+            <div><span className="text-highlight">language:</span> "en-US"</div>
+            <div><span className="text-highlight">platform:</span> "MacIntel"</div>
+            <div><span className="text-highlight">cpuCores:</span> 8</div>
+            <div><span className="text-highlight">deviceMemory:</span> 8</div>
+            <div><span className="text-highlight">touchSupport:</span> false</div>
+            <div><span className="text-highlight">webglVendor:</span> "Apple Inc."</div>
+            <div><span className="text-highlight">webglRenderer:</span> "Apple M1 Pro"</div>
+            <div className="text-paper-400">// ... and 40+ more attributes</div>
+          </div>
+        </div>
+
+        <h2 className="font-serif text-3xl font-bold mb-6 mt-12">
+          Next Steps: Protecting Yourself
+        </h2>
+
+        <p className="mb-6">
+          The good news: you're not powerless. Now that you know what's being collected,
+          you can take action. Here's what actually works:
+        </p>
+
+        <ul className="mb-8 space-y-2">
+          <li><strong>Switch browsers:</strong> Firefox and Brave have built-in fingerprint protection. Safari on Mac does too.</li>
+          <li><strong>Install extensions:</strong> uBlock Origin, Privacy Badger, and Canvas Blocker reduce your fingerprint surface.</li>
+          <li><strong>Use Tor:</strong> The Tor Browser is specifically designed to make all users look identical.</li>
+          <li><strong>Be strategic:</strong> Use different browsers for different activities. Compartmentalize your digital life.</li>
+        </ul>
+
+        <p className="mb-8">
+          Check our <a href="/defense/" className="text-highlight hover:underline">Defense Armory</a> for
+          detailed guides on reducing your digital footprint. Every step you take makes the
+          surveillance economy a little less profitable.
+        </p>
       </div>
     </div>
   );

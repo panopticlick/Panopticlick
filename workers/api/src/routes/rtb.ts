@@ -5,6 +5,7 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../types';
+import { RTBSimulateSchema, validateRequest } from '../schemas/validation';
 import type {
   FingerprintPayload,
   RTBSimulateRequest,
@@ -19,12 +20,14 @@ const rtb = new Hono<{ Bindings: Env }>();
  */
 rtb.post('/simulate', async (c) => {
   try {
-    const body = await c.req.json<RTBSimulateRequest>();
-    const { fingerprint, options } = body;
+    const body = await c.req.json();
+    const validation = validateRequest(RTBSimulateSchema, body);
 
-    if (!fingerprint) {
-      return c.json({ success: false, error: 'Missing fingerprint data' }, 400);
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
     }
+
+    const { fingerprint, sessionId } = validation.data;
 
     // Import valuation engine
     const {
@@ -34,8 +37,8 @@ rtb.post('/simulate', async (c) => {
     } = await import('@panopticlick/valuation-engine');
 
     // Run RTB simulation
-    const auctionResult = simulateRTBAuction(fingerprint);
-    const entropyReport = generateEntropyReport(fingerprint);
+    const auctionResult = simulateRTBAuction(fingerprint as FingerprintPayload);
+    const entropyReport = generateEntropyReport(fingerprint as FingerprintPayload);
 
     // Calculate annual value
     const annualValue = calculateAnnualValue(auctionResult.averageCPM);
@@ -69,6 +72,42 @@ rtb.post('/simulate', async (c) => {
       doubles: [auctionResult.averageCPM, entropyReport.totalBits],
       indexes: ['rtb_simulate'],
     });
+
+    // Store RTB simulation results (new table)
+    if (sessionId) {
+      const simulationId = crypto.randomUUID();
+      await c.env.DB.prepare(`
+        INSERT INTO rtb_simulations
+        (id, session_id, winning_bid_cpm, winning_dsp, total_bidders, inferred_persona, estimated_annual_value)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `)
+        .bind(
+          simulationId,
+          sessionId,
+          auctionResult.winner?.amount || 0,
+          auctionResult.winner?.bidder || 'none',
+          auctionResult.bids.length,
+          JSON.stringify(auctionResult.personas || []),
+          annualValue.annualValue
+        )
+        .run();
+
+      // Store individual bids (new table)
+      for (const bid of auctionResult.bids) {
+        await c.env.DB.prepare(`
+          INSERT INTO rtb_bids (simulation_id, dsp_name, bid_cpm, interest_category, is_winner)
+          VALUES (?, ?, ?, ?, ?)
+        `)
+          .bind(
+            simulationId,
+            bid.bidder,
+            bid.amount,
+            (bid as any).category || null,
+            bid === auctionResult.winner ? 1 : 0
+          )
+          .run();
+      }
+    }
 
     return c.json(response);
   } catch (error) {
@@ -229,6 +268,27 @@ rtb.get('/stats', async (c) => {
   });
 
   return c.json(response);
+});
+
+/**
+ * GET /rtb/market
+ * Market reference data (static for now)
+ */
+rtb.get('/market', (c) => {
+  return c.json({
+    averageCPM: 4,
+    priceRanges: {
+      low: { min: 0.5, max: 2, avg: 1.2 },
+      medium: { min: 2, max: 5, avg: 3.5 },
+      high: { min: 5, max: 10, avg: 7 },
+      premium: { min: 10, max: 20, avg: 14 },
+    },
+    topCategories: [
+      { name: 'tech', cpm: 5.5, volume: 120 },
+      { name: 'finance', cpm: 8.2, volume: 80 },
+      { name: 'gaming', cpm: 3.1, volume: 150 },
+    ],
+  });
 });
 
 export { rtb };

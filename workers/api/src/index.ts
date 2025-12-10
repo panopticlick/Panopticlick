@@ -10,7 +10,7 @@ import { secureHeaders } from 'hono/secure-headers';
 
 import type { Env } from './types';
 import { corsMiddleware, contextMiddleware } from './middleware';
-import { scan, rtb, defense, stats, privacy } from './routes';
+import { scan, rtb, defense, stats, privacy, ai } from './routes';
 
 // Create main app
 const app = new Hono<{ Bindings: Env }>();
@@ -43,6 +43,7 @@ app.route('/v1/rtb', rtb);
 app.route('/v1/defense', defense);
 app.route('/v1/stats', stats);
 app.route('/v1/privacy', privacy);
+app.route('/v1/ai', ai);
 
 // Legacy routes (redirect to v1)
 app.all('/scan/*', (c) => {

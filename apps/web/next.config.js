@@ -21,6 +21,14 @@ const nextConfig = {
   // Strict mode for better development
   reactStrictMode: true,
 
+  // Environment variables (accessible in client-side code)
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://api.panopticlick.org',
+  },
+
+  // PoweredBy header (security)
+  poweredByHeader: false,
+
   // Experimental features
   experimental: {
     // Typed routes disabled - causes issues with dynamic hrefs

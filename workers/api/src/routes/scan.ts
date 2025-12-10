@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
+import { ScanStartSchema, ScanCollectSchema, validateRequest } from '../schemas/validation';
 import type {
   FingerprintPayload,
   ScanStartResponse,
@@ -22,6 +23,41 @@ const scan = new Hono<{ Bindings: Env }>();
  */
 scan.post('/start', async (c) => {
   const ctx = getRequestContext(c);
+
+  // Optional Turnstile verification when secret is configured
+  const secret = c.env.TURNSTILE_SECRET;
+  if (secret) {
+    try {
+      const body = await c.req.json();
+      const validation = validateRequest(ScanStartSchema, body);
+
+      if (!validation.success) {
+        return c.json({ success: false, error: validation.error }, 400);
+      }
+
+      const { turnstileToken } = validation.data;
+      if (!turnstileToken) {
+        return c.json({ success: false, error: 'TURNSTILE_REQUIRED' }, 400);
+      }
+
+      const verify = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          secret,
+          response: turnstileToken,
+          remoteip: ctx.ip,
+        }),
+      }).then((r) => r.json<{ success: boolean }>());
+
+      if (!verify.success) {
+        return c.json({ success: false, error: 'TURNSTILE_FAILED' }, 403);
+      }
+    } catch (err) {
+      console.error('Turnstile verify failed', err);
+      return c.json({ success: false, error: 'TURNSTILE_ERROR' }, 500);
+    }
+  }
 
   // Generate session ID
   const sessionId = generateSessionId();
@@ -67,23 +103,28 @@ scan.post('/collect', async (c) => {
   const ctx = getRequestContext(c);
 
   try {
-    const body = await c.req.json<ScanCollectRequest>();
-    const { sessionId, fingerprint, consent } = body;
+    const body = await c.req.json();
+    const validation = validateRequest(ScanCollectSchema, body);
 
-    if (!sessionId || !fingerprint) {
-      return c.json({ success: false, error: 'Missing required fields' }, 400);
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
     }
 
+    const { sessionId, fingerprint, consent } = validation.data;
+
     // Import valuation engine (dynamic import for Workers)
-    const { generateValuationReport, generateHashes } = await import(
+    const { generateValuationReport } = await import(
       '@panopticlick/valuation-engine'
+    );
+    const { generateHashes } = await import(
+      '@panopticlick/fingerprint-sdk'
     );
 
     // Generate hashes
-    const hashes = await generateHashes(fingerprint);
+    const hashes = await generateHashes(fingerprint as unknown as FingerprintPayload);
 
     // Generate full report
-    const report = generateValuationReport(fingerprint, {
+    const report = generateValuationReport(fingerprint as unknown as FingerprintPayload, {
       vpnDetected: ctx.isVPN,
       torDetected: ctx.isTor,
     });
@@ -110,6 +151,40 @@ scan.post('/collect', async (c) => {
         softwareHash: hashes.softwareHash,
         entropyBits: report.entropy.totalBits,
       });
+
+      // Store detailed fingerprint analysis (new table)
+      const analysisId = crypto.randomUUID();
+      const entropyComponents = (report.entropy as any).components || [];
+      await c.env.DB.prepare(`
+        INSERT INTO fingerprint_analyses
+        (id, session_id, fingerprint_hash, total_entropy, tier, signals_collected)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `)
+        .bind(
+          analysisId,
+          sessionId,
+          hashes.fullHash,
+          report.entropy.totalBits,
+          report.entropy.tier,
+          entropyComponents.length
+        )
+        .run();
+
+      // Store signal-level entropy breakdown (new table)
+      if (entropyComponents.length > 0) {
+        for (const component of entropyComponents) {
+          await c.env.DB.prepare(`
+            INSERT INTO signal_entropy
+            (analysis_id, signal_name, entropy_bits, rarity)
+            VALUES (?, ?, ?, ?)
+          `)
+            .bind(analysisId, component.name, component.bits, component.rarity || 'common')
+            .run();
+        }
+      }
+
+      // Update signal frequencies for dynamic entropy (new table)
+      await updateSignalFrequencies(c.env.DB, fingerprint as unknown as FingerprintPayload);
     }
 
     // Log to analytics
@@ -252,6 +327,61 @@ async function updateFingerprintStats(
       data.entropyBits
     )
     .run();
+}
+
+/**
+ * Update signal frequencies for dynamic entropy calculation
+ */
+async function updateSignalFrequencies(
+  db: D1Database,
+  fingerprint: FingerprintPayload
+): Promise<void> {
+  const signals: Array<{ name: string; value: string }> = [];
+
+  // Extract key signals
+  if (fingerprint.hardware?.canvas?.hash) {
+    signals.push({ name: 'canvas', value: fingerprint.hardware.canvas.hash });
+  }
+  if (fingerprint.hardware?.webgl?.hash) {
+    signals.push({ name: 'webgl', value: fingerprint.hardware.webgl.hash });
+  }
+  if (fingerprint.hardware?.audio?.hash) {
+    signals.push({ name: 'audio', value: fingerprint.hardware.audio.hash });
+  }
+  if (fingerprint.hardware?.screen) {
+    const screen = fingerprint.hardware.screen;
+    signals.push({
+      name: 'screen',
+      value: `${screen.width}x${screen.height}@${screen.pixelRatio}`,
+    });
+  }
+  if (fingerprint.software?.platform) {
+    signals.push({ name: 'platform', value: fingerprint.software.platform });
+  }
+  if (fingerprint.software?.timezone) {
+    signals.push({ name: 'timezone', value: fingerprint.software.timezone });
+  }
+
+  // Upsert each signal frequency
+  for (const signal of signals) {
+    // Hash the value for consistent storage
+    const encoder = new TextEncoder();
+    const data = encoder.encode(signal.value);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const valueHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+
+    await db
+      .prepare(
+        `INSERT INTO signal_frequencies (signal_name, signal_value_hash, frequency, last_seen)
+         VALUES (?, ?, 1, datetime('now'))
+         ON CONFLICT(signal_name, signal_value_hash) DO UPDATE SET
+           frequency = frequency + 1,
+           last_seen = datetime('now')`
+      )
+      .bind(signal.name, valueHash)
+      .run();
+  }
 }
 
 export { scan };

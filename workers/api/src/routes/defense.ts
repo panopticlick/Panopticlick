@@ -6,12 +6,15 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
+import { DefenseBlockerSchema, DefenseTestSchema, validateRequest } from '../schemas/validation';
 import type {
+  FingerprintPayload,
   DefenseBlockerRequest,
   DefenseBlockerResponse,
   DefenseDNSResponse,
   DefenseTestRequest,
   DefenseTestResponse,
+  DefenseRecommendationsResponse,
 } from '@panopticlick/types';
 
 const defense = new Hono<{ Bindings: Env }>();
@@ -22,8 +25,14 @@ const defense = new Hono<{ Bindings: Env }>();
  */
 defense.post('/blocker', async (c) => {
   try {
-    const body = await c.req.json<DefenseBlockerRequest>();
-    const { loadedResources, blockedResources, testResults } = body;
+    const body = await c.req.json();
+    const validation = validateRequest(DefenseBlockerSchema, body);
+
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
+    }
+
+    const { loadedResources, blockedResources, testResults, sessionId } = validation.data;
 
     // Analyze blocker effectiveness
     const analysis = analyzeBlocker(loadedResources, blockedResources, testResults);
@@ -77,8 +86,15 @@ defense.get('/dns', async (c) => {
  */
 defense.post('/test', async (c) => {
   try {
-    const body = await c.req.json<DefenseTestRequest>();
-    const { fingerprint, clientTests } = body;
+    const body = await c.req.json();
+    const validation = validateRequest(DefenseTestSchema, body);
+
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
+    }
+
+    const { fingerprint, sessionId, blockerResults } = validation.data;
+    const clientTests = blockerResults;
 
     // Import valuation engine
     const { analyzeDefenses, generateHardeningGuide } = await import(
@@ -86,7 +102,7 @@ defense.post('/test', async (c) => {
     );
 
     // Analyze defenses
-    const defenseStatus = analyzeDefenses(fingerprint, {
+    const defenseStatus = analyzeDefenses(fingerprint as FingerprintPayload, {
       adBlockerDetected: clientTests?.adBlocker ?? false,
       trackerBlocked: clientTests?.trackerBlocked ?? false,
       vpnDetected: clientTests?.vpnDetected ?? false,
@@ -94,7 +110,7 @@ defense.post('/test', async (c) => {
     });
 
     // Generate hardening guide
-    const hardeningGuide = generateHardeningGuide(fingerprint);
+    const hardeningGuide = generateHardeningGuide(fingerprint as FingerprintPayload);
 
     const response: DefenseTestResponse = {
       success: true,
@@ -111,10 +127,71 @@ defense.post('/test', async (c) => {
       indexes: ['defense_test'],
     });
 
+    // Store defense audit results (new table)
+    if (sessionId) {
+      const auditId = crypto.randomUUID();
+      await c.env.DB.prepare(`
+        INSERT INTO defense_audits
+        (id, session_id, blocker_detected, effectiveness_score, privacy_tier, dnt_enabled, gpc_enabled)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `)
+        .bind(
+          auditId,
+          sessionId,
+          clientTests?.adBlocker ? 'detected' : null,
+          defenseStatus.score,
+          defenseStatus.overallTier,
+          fingerprint.software?.doNotTrack ? 1 : 0,
+          0 // GPC detection would require additional client-side check
+        )
+        .run();
+    }
+
     return c.json(response);
   } catch (error) {
     console.error('Defense test error:', error);
     return c.json({ success: false, error: 'Failed to run defense tests' }, 500);
+  }
+});
+
+/**
+ * POST /defense/recommendations
+ * Return hardening guidance without full scorecard
+ */
+defense.post('/recommendations', async (c) => {
+  try {
+    const body = await c.req.json<{ fingerprint: any }>();
+    const { fingerprint } = body;
+
+    if (!fingerprint) {
+      return c.json({ success: false, error: 'Missing fingerprint' }, 400);
+    }
+
+    const { analyzeDefenses, generateHardeningGuide } = await import(
+      '@panopticlick/valuation-engine'
+    );
+
+    const status = analyzeDefenses(fingerprint, {
+      adBlockerDetected: false,
+      trackerBlocked: false,
+      vpnDetected: false,
+      torDetected: false,
+    });
+
+    const guide = generateHardeningGuide(fingerprint);
+
+    const response: DefenseRecommendationsResponse = {
+      success: true,
+      tier: status.overallTier,
+      score: status.score,
+      recommendations: guide.steps.map((s) => s.title),
+      weaknesses: status.weaknesses || [],
+    };
+
+    return c.json(response);
+  } catch (error) {
+    console.error('Defense recommendations error:', error);
+    return c.json({ success: false, error: 'Failed to generate recommendations' }, 500);
   }
 });
 
@@ -251,7 +328,7 @@ function categorizeResource(resource: string): string {
 }
 
 function detectDNSProvider(
-  cf: IncomingRequestCfProperties | undefined
+  cf: IncomingRequestCfProperties | CfProperties<unknown> | undefined
 ): string {
   if (!cf) return 'Unknown';
 
@@ -267,7 +344,7 @@ function detectDNSProvider(
 }
 
 function detectDNSEncryption(
-  cf: IncomingRequestCfProperties | undefined
+  cf: IncomingRequestCfProperties | CfProperties<unknown> | undefined
 ): boolean {
   // This is a heuristic - can't truly detect DNS encryption from here
   // Would need client-side testing

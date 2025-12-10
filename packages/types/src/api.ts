@@ -3,8 +3,16 @@
  * Request/Response types for all API endpoints
  */
 
-import type { FingerprintPayload } from './fingerprint';
-import type { ValuationReport, RTBSimulationResult, DefenseStatus, RTBBid, Persona } from './valuation';
+import type { FingerprintPayload, NetworkIntelligence } from './fingerprint';
+import type {
+  ValuationReport,
+  RTBSimulationResult,
+  DefenseStatus,
+  RTBBid,
+  Persona,
+  HardeningGuide,
+  DefenseTier,
+} from './valuation';
 
 // ============================================
 // SCAN ENDPOINTS
@@ -18,20 +26,29 @@ export interface ScanStartRequest {
 }
 
 export interface ScanStartResponse {
+  success: boolean;
   sessionId: string;
-  consentRecorded: boolean;
+  consentRecorded?: boolean;
+  timestamp?: number;
+  network?: NetworkIntelligence;
 }
 
 // POST /api/scan/collect
 export interface ScanCollectRequest {
   sessionId: string;
   fingerprint: FingerprintPayload;
+  consent?: boolean;
 }
 
 export interface ScanCollectResponse {
   success: boolean;
-  analysisId: string;
+  analysisId?: string;
   report: ValuationReport;
+  hashes?: {
+    full?: string;
+    hardware?: string;
+    software?: string;
+  };
 }
 
 // ============================================
@@ -40,8 +57,9 @@ export interface ScanCollectResponse {
 
 // POST /api/rtb/simulate
 export interface RTBSimulateRequest {
-  sessionId: string;
-  fingerprint: Partial<FingerprintPayload>;
+  sessionId?: string;
+  fingerprint: FingerprintPayload;
+  options?: Record<string, unknown>;
   geo?: {
     country: string;
     city: string;
@@ -50,12 +68,24 @@ export interface RTBSimulateRequest {
 
 export interface RTBSimulateResponse {
   success: boolean;
-  simulationId: string;
-  persona: Persona;
-  bids: RTBBid[];
-  winningBid: RTBBid;
-  estimatedCPM: number;
-  auctionDuration: number;
+  auction: {
+    bids: RTBBid[];
+    winner: RTBBid | null;
+    totalValue: number;
+    averageCPM: number;
+  };
+  valuation?: {
+    cpm: number;
+    annualValue: number;
+    explanation: string;
+  };
+  personas?: Persona[];
+  entropy?: {
+    totalBits: number;
+    tier: string;
+    multiplier?: number;
+  };
+  timestamp: number;
 }
 
 // ============================================
@@ -93,38 +123,62 @@ export interface SupercookieVerifyResponse {
 
 // POST /api/defense/blocker
 export interface DefenseBlockerRequest {
-  sessionId: string;
-  results: {
-    tracker: string;
-    loaded: boolean;
-  }[];
+  sessionId?: string;
+  loadedResources: string[];
+  blockedResources: string[];
+  testResults: Record<string, boolean>;
 }
 
 export interface DefenseBlockerResponse {
-  score: number;
-  blocked: number;
-  total: number;
+  success: boolean;
+  blockerDetected: boolean;
+  blockerName: string | null;
+  effectivenessScore: number;
+  categories: Record<string, { blocked: number; total: number }>;
   recommendations: string[];
 }
 
 // GET /api/defense/dns
 export interface DefenseDNSResponse {
-  dnsProvider: string;
-  isEncrypted: boolean;
-  leakDetected: boolean;
-  resolverIp: string;
+  success: boolean;
+  resolver: {
+    ip: string;
+    provider: string;
+    isEncrypted: boolean;
+    isCloudflare?: boolean;
+  };
+  leakTest: {
+    passed: boolean;
+    leakedIPs: string[];
+  };
 }
 
 // POST /api/defense/test
 export interface DefenseTestRequest {
-  sessionId: string;
-  tests: ('adblock' | 'headers' | 'fingerprint' | 'network')[];
+  fingerprint: FingerprintPayload;
+  clientTests?: {
+    adBlocker?: boolean;
+    trackerBlocked?: boolean;
+    vpnDetected?: boolean;
+    torDetected?: boolean;
+  };
 }
 
 export interface DefenseTestResponse {
   success: boolean;
-  auditId: string;
-  results: DefenseStatus;
+  auditId?: string;
+  status: DefenseStatus;
+  hardeningGuide: HardeningGuide;
+  score: number;
+  tier: DefenseTier;
+}
+
+export interface DefenseRecommendationsResponse {
+  success: boolean;
+  tier: DefenseTier;
+  score: number;
+  recommendations: string[];
+  weaknesses: string[];
 }
 
 // ============================================
@@ -132,10 +186,10 @@ export interface DefenseTestResponse {
 // ============================================
 
 export interface EntropyBucket {
-  min: number;
-  max: number;
+  range: string;
   count: number;
-  percentage: number;
+  avgEntropy: number;
+  percentage?: number;
 }
 
 export interface BrowserStat {
@@ -154,14 +208,12 @@ export interface CountryStat {
 // GET /api/stats/global
 export interface GlobalStatsResponse {
   totalScans: number;
-  avgEntropy: number;
-  medianEntropy: number;
-  avgCPM: number;
-  avgAdblockScore: number;
-  entropyDistribution: EntropyBucket[];
-  topBrowsers: BrowserStat[];
-  topCountries: CountryStat[];
-  updatedAt: number;
+  uniqueFingerprints: number;
+  averageEntropy: number;
+  entropyDistribution: Record<string, number> | EntropyBucket[];
+  browserDistribution?: Record<string, number>;
+  osDistribution?: Record<string, number>;
+  updatedAt: string | number;
 }
 
 // ============================================
@@ -170,20 +222,35 @@ export interface GlobalStatsResponse {
 
 // POST /api/opt-out
 export interface OptOutRequest {
-  confirm: boolean;
+  sessionIds?: string[];
+  fingerprintHash?: string;
+  email?: string;
 }
 
 export interface OptOutResponse {
   success: boolean;
   message: string;
+  deletedCount?: {
+    sessions: number;
+    fingerprints: number;
+  };
 }
 
 // GET /api/my-data
 export interface MyDataResponse {
-  sessions: unknown[];
-  analyses: unknown[];
-  exportedAt: string;
-  note: string;
+  success: boolean;
+  data?: {
+    sessions: unknown[];
+    fingerprints: unknown[];
+    exportedAt: string;
+    note: string;
+  };
+}
+
+export interface MyDataExportResponse {
+  success: boolean;
+  exportUrl: string;
+  expiresAt: string;
 }
 
 // ============================================

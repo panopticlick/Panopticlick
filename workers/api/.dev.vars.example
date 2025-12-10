@@ -1,0 +1,13 @@
+# Cloudflare Worker Development Environment Variables
+# Copy this file to .dev.vars and fill in your actual values
+# DO NOT commit .dev.vars to git!
+
+# OpenRouter API Key for AI Chat
+# Get your free API key at: https://openrouter.ai/keys
+OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+
+# Optional: Override default model
+# OPENROUTER_MODEL=google/gemini-2.0-flash-exp:free
+
+# Turnstile Secret (optional for local development)
+# TURNSTILE_SECRET=your-turnstile-secret
