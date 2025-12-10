@@ -220,7 +220,7 @@ export default function ManifestoIndexPage() {
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="https://github.com/7and1/Panopticlick"
+                href="https://github.com/Panopticlick/Panopticlick"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-ink text-paper rounded-sm hover:bg-ink-200 transition-colors font-mono"
                 target="_blank"
                 rel="noopener noreferrer"

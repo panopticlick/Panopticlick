@@ -110,7 +110,7 @@ export function Footer() {
                 Privacy Policy
               </Link>
               <a
-                href="https://github.com/7and1/Panopticlick"
+                href="https://github.com/Panopticlick/Panopticlick"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block text-paper-300 hover:text-paper transition-colors"

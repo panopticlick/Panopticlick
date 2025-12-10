@@ -230,5 +230,5 @@ MIT License - See [LICENSE](./LICENSE) for details.
 
 <p align="center">
   <a href="https://panopticlick.org">Website</a> •
-  <a href="https://github.com/7and1/Panopticlick">GitHub</a>
+  <a href="https://github.com/Panopticlick/Panopticlick">GitHub</a>
 </p>

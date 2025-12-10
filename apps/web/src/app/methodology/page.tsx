@@ -323,7 +323,7 @@ export default function MethodologyPage() {
               </p>
               <div className="not-prose">
                 <Link
-                  href="https://github.com/7and1/Panopticlick"
+                  href="https://github.com/Panopticlick/Panopticlick"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-ink text-paper rounded-sm hover:bg-ink-200 transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"

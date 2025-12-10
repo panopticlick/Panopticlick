@@ -236,7 +236,7 @@ export default function PrivacyPage() {
               </p>
               <div className="not-prose bg-paper-100 p-4 rounded-sm font-mono text-sm">
                 <div>Email: privacy@panopticlick.org</div>
-                <div>GitHub: github.com/7and1/Panopticlick</div>
+                <div>GitHub: github.com/Panopticlick/Panopticlick</div>
               </div>
             </DocumentSection>
 
