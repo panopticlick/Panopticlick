@@ -64,15 +64,12 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.panopticlick.org
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: panopticlick
-          directory: apps/web/out
-          # Use static export for Cloudflare Pages
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref_name }}
+        run: |
+          cd apps/web
+          npx wrangler pages deploy out --project-name=panopticlick --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   # Deploy Cloudflare Worker API
   deploy-worker:
