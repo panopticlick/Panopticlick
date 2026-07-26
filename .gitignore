@@ -40,3 +40,6 @@ coverage
 # Cloudflare
 .mf
 SECRETS-TO-ADD.md
+
+# Agent working artifacts
+.codex-results/

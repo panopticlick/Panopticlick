@@ -43,10 +43,16 @@ TURNSTILE_SECRET = ""
 # Switched to more stable model (Llama 3.3 70B)
 OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
+# IPBot IP intelligence API
+# The API key is a secret — NEVER put it here. Set it with:
+#   npx wrangler secret put IPBOT_API_KEY --env production
+# For local dev, add IPBOT_API_ORIGIN + IPBOT_API_KEY to .dev.vars
+IPBOT_API_ORIGIN = "https://api.ipbot.com"
+
 # Production environment configuration
 [env.production]
 name = "panopticlick-api"
-vars = { ENVIRONMENT = "production", API_VERSION = "v1" }
+vars = { ENVIRONMENT = "production", API_VERSION = "v1", IPBOT_API_ORIGIN = "https://api.ipbot.com" }
 routes = [
   { pattern = "api.panopticlick.org/*", custom_domain = true }
 ]

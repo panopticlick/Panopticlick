@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
+import { lookupIP } from '../services/ipbot';
 import { ScanStartSchema, ScanCollectSchema, validateRequest } from '../schemas/validation';
 import type {
   FingerprintPayload,
@@ -62,20 +63,23 @@ scan.post('/start', async (c) => {
   // Generate session ID
   const sessionId = generateSessionId();
 
-  // Build network intelligence from request context
+  // Build network intelligence: real IPBot data when configured,
+  // Cloudflare header heuristics as fallback
+  const ipbot = (await lookupIP(ctx.ip, c.env))?.data;
+
   const network: NetworkIntelligence = {
     ipHash: ctx.ipHash,
-    asn: ctx.asn,
-    asnOrg: ctx.asnOrg,
-    country: ctx.country,
-    countryCode: ctx.country,
-    region: '',
-    city: ctx.city,
-    isProxy: ctx.isProxy,
-    isVPN: ctx.isVPN,
-    isTor: ctx.isTor,
-    isDatacenter: ctx.isDatacenter,
-    riskScore: calculateRiskScore(ctx),
+    asn: ipbot?.network?.asn ?? ctx.asn,
+    asnOrg: ipbot?.network?.org ?? ctx.asnOrg,
+    country: ipbot?.location?.country ?? ctx.country,
+    countryCode: ipbot?.location?.country_code ?? ctx.country,
+    region: ipbot?.location?.region ?? '',
+    city: ipbot?.location?.city ?? ctx.city,
+    isProxy: ipbot?.classification?.is_proxy ?? ctx.isProxy,
+    isVPN: ipbot?.classification?.is_vpn ?? ctx.isVPN,
+    isTor: ipbot?.classification?.is_tor ?? ctx.isTor,
+    isDatacenter: ipbot?.classification?.is_datacenter ?? ctx.isDatacenter,
+    riskScore: ipbot?.score?.risk_score ?? calculateRiskScore(ctx),
   };
 
   const response: ScanStartResponse = {
@@ -123,11 +127,17 @@ scan.post('/collect', async (c) => {
     // Generate hashes
     const hashes = await generateHashes(fingerprint as unknown as FingerprintPayload);
 
-    // Generate full report
+    // Generate full report (IPBot intel is cached per-IP, so this reuses
+    // the /start lookup instead of issuing a second API call)
+    const ipbot = (await lookupIP(ctx.ip, c.env))?.data;
     const report = generateValuationReport(fingerprint as unknown as FingerprintPayload, {
-      vpnDetected: ctx.isVPN,
-      torDetected: ctx.isTor,
+      vpnDetected: ipbot?.classification?.is_vpn ?? ctx.isVPN,
+      torDetected: ipbot?.classification?.is_tor ?? ctx.isTor,
     });
+    const countryCode = ipbot?.location?.country_code ?? ctx.country;
+    const asn = ipbot?.network?.asn ?? ctx.asn;
+    const isProxy = ipbot?.classification?.is_proxy ?? ctx.isProxy;
+    const isVPN = ipbot?.classification?.is_vpn ?? ctx.isVPN;
 
     // Store session if consent given
     if (consent) {
@@ -138,10 +148,10 @@ scan.post('/collect', async (c) => {
         softwareHash: hashes.softwareHash,
         entropyBits: report.entropy.totalBits,
         ipHash: ctx.ipHash,
-        country: ctx.country,
-        asn: ctx.asn,
-        isProxy: ctx.isProxy,
-        isVPN: ctx.isVPN,
+        country: countryCode,
+        asn,
+        isProxy,
+        isVPN,
       });
 
       // Update fingerprint stats
@@ -189,7 +199,7 @@ scan.post('/collect', async (c) => {
 
     // Log to analytics
     c.env.ANALYTICS.writeDataPoint({
-      blobs: [sessionId, ctx.country, report.entropy.tier],
+      blobs: [sessionId, countryCode, report.entropy.tier],
       doubles: [report.entropy.totalBits, report.valuation.averageCPM],
       indexes: ['scan_complete'],
     });

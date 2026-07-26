@@ -11,3 +11,7 @@ OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
 
 # Turnstile Secret (optional for local development)
 # TURNSTILE_SECRET=your-turnstile-secret
+
+# IPBot IP intelligence API
+IPBOT_API_ORIGIN=https://api.ipbot.com
+IPBOT_API_KEY=your-ipbot-api-key-here

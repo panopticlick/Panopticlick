@@ -21,6 +21,10 @@ export interface Env {
   // AI Chat (OpenRouter)
   OPENROUTER_API_KEY?: string;
   OPENROUTER_MODEL?: string;
+
+  // IPBot IP intelligence (key is a Wrangler secret, never in wrangler.toml)
+  IPBOT_API_ORIGIN?: string;
+  IPBOT_API_KEY?: string;
 }
 
 /**

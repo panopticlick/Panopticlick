@@ -128,7 +128,9 @@ ai.post('/chat', async (c) => {
       throw new Error(`OpenRouter API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
     const content =
       data.choices?.[0]?.message?.content ||
       buildFallbackResponse(prompt, fingerprintContext);
