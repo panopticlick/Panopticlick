@@ -121,7 +121,7 @@ defense.post('/test', async (c) => {
     };
 
     // Log to analytics
-    c.env.ANALYTICS.writeDataPoint({
+    c.env.ANALYTICS?.writeDataPoint({
       blobs: [defenseStatus.overallTier],
       doubles: [defenseStatus.score],
       indexes: ['defense_test'],

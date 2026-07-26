@@ -10,7 +10,8 @@ export interface Env {
   CACHE: KVNamespace;
 
   // Analytics Engine
-  ANALYTICS: AnalyticsEngineDataset;
+  // Optional: absent when the binding is not configured; all call sites must use `?.`
+  ANALYTICS?: AnalyticsEngineDataset;
 
   // Environment variables
   ENVIRONMENT: string;

@@ -91,7 +91,7 @@ privacy.post('/opt-out', async (c) => {
     }
 
     // Log opt-out request (without PII)
-    c.env.ANALYTICS.writeDataPoint({
+    c.env.ANALYTICS?.writeDataPoint({
       blobs: ['opt_out', ctx.country],
       doubles: [deletedCount.sessions, deletedCount.fingerprints],
       indexes: ['privacy_optout'],

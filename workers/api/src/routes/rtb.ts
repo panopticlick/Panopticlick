@@ -67,7 +67,7 @@ rtb.post('/simulate', async (c) => {
     };
 
     // Log to analytics
-    c.env.ANALYTICS.writeDataPoint({
+    c.env.ANALYTICS?.writeDataPoint({
       blobs: [entropyReport.tier, auctionResult.winner?.bidder || 'none'],
       doubles: [auctionResult.averageCPM, entropyReport.totalBits],
       indexes: ['rtb_simulate'],

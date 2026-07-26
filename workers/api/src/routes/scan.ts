@@ -90,7 +90,7 @@ scan.post('/start', async (c) => {
   };
 
   // Log to analytics
-  c.env.ANALYTICS.writeDataPoint({
+  c.env.ANALYTICS?.writeDataPoint({
     blobs: [sessionId, ctx.country, ctx.asn],
     doubles: [1], // scan_started
     indexes: ['scan_start'],
@@ -198,7 +198,7 @@ scan.post('/collect', async (c) => {
     }
 
     // Log to analytics
-    c.env.ANALYTICS.writeDataPoint({
+    c.env.ANALYTICS?.writeDataPoint({
       blobs: [sessionId, countryCode, report.entropy.tier],
       doubles: [report.entropy.totalBits, report.valuation.averageCPM],
       indexes: ['scan_complete'],
