@@ -19,8 +19,22 @@ const rtb = new Hono<{ Bindings: Env }>();
  * Simulate an RTB auction for the given fingerprint
  */
 rtb.post('/simulate', async (c) => {
+  const body = await c.req.json().catch(() => null);
+
+  if (body === null) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: 'Request body must contain valid JSON',
+        },
+      },
+      400
+    );
+  }
+
   try {
-    const body = await c.req.json();
     const validation = validateRequest(RTBSimulateSchema, body);
 
     if (!validation.success) {

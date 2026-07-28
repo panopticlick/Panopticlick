@@ -7,6 +7,8 @@
 /test / 301
 /fingerprint / 301
 /track / 301
+/scan / 301
+/scan/ / 301
 
 # Old Panopticlick paths
 /eff.html /about/ 301

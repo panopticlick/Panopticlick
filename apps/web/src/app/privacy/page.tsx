@@ -150,11 +150,11 @@ export default function PrivacyPage() {
                   Data is stored on Cloudflare's infrastructure with encryption at rest
                 </li>
                 <li>
-                  We retain fingerprint data for a maximum of 12 months
+                  Opted-in scan sessions are retained for a maximum of 30 days
                 </li>
                 <li>
-                  Aggregated statistics are retained indefinitely but cannot be tied
-                  to individual users
+                  De-identified fingerprint aggregates are retained for a maximum of
+                  90 days
                 </li>
               </ul>
             </DocumentSection>
@@ -166,14 +166,15 @@ export default function PrivacyPage() {
 
               <h4>5.1 Access</h4>
               <p>
-                Request a copy of any data we have associated with your session.
-                Use the "View My Data" button after a scan to see your stored data.
+                Export the data associated with an opted-in session from the completed
+                case summary. The ownership token issued with that session is required.
               </p>
 
               <h4>5.2 Deletion</h4>
               <p>
-                Request deletion of your data at any time. Use the "Delete My Data"
-                button or contact us with your session ID.
+                Request deletion through the authenticated privacy endpoint or contact
+                us for assistance. A session ID alone is not enough; deletion requires
+                the ownership token issued with that session.
               </p>
 
               <h4>5.3 Portability</h4>

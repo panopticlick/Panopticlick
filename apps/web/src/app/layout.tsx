@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { FingerprintChat } from '@/components/ai';
+import { ChatLauncher } from '@/components/ai';
 import { ConsentBanner } from '@/components/consent-banner';
 import { serif, sans, mono } from './fonts';
 import './globals.css';
@@ -92,42 +92,6 @@ export default function RootLayout({
     >
       <head>
         <link rel="preconnect" href="https://api.panopticlick.org" crossOrigin="" />
-        <script
-          type="application/ld+json"
-          // FAQ rich results focused on fingerprint test & privacy
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'FAQPage',
-              mainEntity: [
-                {
-                  '@type': 'Question',
-                  name: 'Is my browser uniquely identifiable?',
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Yes, most modern browsers expose enough attributes (canvas, WebGL, fonts, timezone, hardware) to be uniquely identified without cookies. Panopticlick measures that uniqueness as entropy.',
-                  },
-                },
-                {
-                  '@type': 'Question',
-                  name: 'Do you store my fingerprint?',
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Data is only stored if you give consent. You can delete it anytime via the privacy export/delete controls, and IPs are hashed.',
-                  },
-                },
-                {
-                  '@type': 'Question',
-                  name: 'What happens during the scan?',
-                  acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'We collect hardware, software, and capability signals (canvas, WebGL, audio, fonts, screen, UA) then compute hashes, entropy, and an advertising value simulation.',
-                  },
-                },
-              ],
-            }),
-          }}
-        />
       </head>
       <body className="min-h-screen bg-paper antialiased flex flex-col">
         {/* Skip to content link */}
@@ -153,7 +117,7 @@ export default function RootLayout({
         <ConsentBanner />
 
         {/* AI Chat - Floating bottom right */}
-        <FingerprintChat />
+        <ChatLauncher />
 
         {/* Structured data */}
         <script

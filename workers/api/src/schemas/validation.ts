@@ -16,60 +16,98 @@ export const ScanStartSchema = z.object({
 // POST /v1/scan/collect
 export const ScanCollectSchema = z.object({
   sessionId: z.string().min(1, 'Session ID is required'),
-  fingerprint: z.object({
-    hardware: z.object({
-      canvas: z.object({
-        hash: z.string(),
-        blocked: z.boolean().optional(),
-        spoofed: z.boolean().optional(),
-      }).optional(),
-      webgl: z.object({
-        vendor: z.string().optional(),
-        renderer: z.string().optional(),
-        hash: z.string(),
-        blocked: z.boolean().optional(),
-      }).optional(),
-      audio: z.object({
-        hash: z.string(),
-        sampleRate: z.number().optional(),
-        blocked: z.boolean().optional(),
-      }).optional(),
-      screen: z.object({
-        width: z.number(),
-        height: z.number(),
-        pixelRatio: z.number(),
-        colorDepth: z.number(),
-        orientation: z.string().optional(),
-      }).optional(),
-    }),
-    software: z.object({
-      userAgent: z.string(),
-      platform: z.string(),
-      language: z.string(),
-      languages: z.array(z.string()).optional(),
-      timezone: z.string(),
-      timezoneOffset: z.number(),
-      plugins: z.array(z.string()).optional(),
-      fonts: z.array(z.string()).optional(),
-    }),
-    capabilities: z.object({
-      cookieEnabled: z.boolean().optional(),
-      doNotTrack: z.string().nullable().optional(),
-      webgl: z.boolean().optional(),
-      webrtc: z.boolean().optional(),
-      canvas: z.boolean().optional(),
-    }).optional(),
-    network: z.object({
-      ipHash: z.string().optional(),
-      asn: z.number().optional(),
-      country: z.string().optional(),
-    }).optional(),
-    meta: z.object({
-      sessionId: z.string(),
-      timestamp: z.number(),
-      sdkVersion: z.string(),
-    }),
-  }),
+  fingerprint: z
+    .object({
+      hardware: z
+        .object({
+          canvas: z
+            .object({
+              hash: z.string(),
+              blocked: z.boolean().optional(),
+              spoofed: z.boolean().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
+          webgl: z
+            .object({
+              vendor: z.string().optional(),
+              renderer: z.string().optional(),
+              hash: z.string(),
+              blocked: z.boolean().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
+          audio: z
+            .object({
+              hash: z.string(),
+              sampleRate: z.number().optional(),
+              blocked: z.boolean().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
+          screen: z
+            .object({
+              width: z.number(),
+              height: z.number(),
+              pixelRatio: z.number(),
+              colorDepth: z.number(),
+              orientation: z.string().optional(),
+            })
+            .passthrough()
+            .optional(),
+        })
+        .passthrough(),
+      software: z
+        .object({
+          userAgent: z.string(),
+          platform: z.string(),
+          language: z.string(),
+          languages: z.array(z.string()).optional(),
+          timezone: z.string(),
+          timezoneOffset: z.number(),
+          plugins: z
+            .array(
+              z.union([
+                z.string(),
+                z
+                  .object({
+                    name: z.string(),
+                    filename: z.string().optional(),
+                    description: z.string().optional(),
+                  })
+                  .passthrough(),
+              ])
+            )
+            .optional(),
+          fonts: z
+            .union([
+              z.array(z.string()),
+              z
+                .object({
+                  hash: z.string(),
+                  count: z.number(),
+                  detected: z.array(z.string()),
+                })
+                .passthrough(),
+              z.null(),
+            ])
+            .optional(),
+        })
+        .passthrough(),
+      capabilities: z.object({}).passthrough().optional(),
+      network: z.object({}).passthrough().optional(),
+      meta: z
+        .object({
+          sessionId: z.string(),
+          timestamp: z.number(),
+          sdkVersion: z.string(),
+        })
+        .passthrough(),
+    })
+    .passthrough(),
   consent: z.boolean().optional(),
 });
 
@@ -155,9 +193,20 @@ export const PrivacyConsentSchema = z.object({
 });
 
 // GET /v1/privacy/my-data (query params)
-export const PrivacyMyDataSchema = z.object({
-  fingerprintHash: z.string().optional(),
-});
+export const PrivacyMyDataSchema = z
+  .object({
+    sessionId: z.string().min(1).optional(),
+    fingerprintHash: z.string().min(1).optional(),
+  })
+  .refine(
+    (data) =>
+      (!data.sessionId && !data.fingerprintHash) ||
+      Boolean(data.sessionId && data.fingerprintHash),
+    {
+      message:
+        'sessionId and fingerprintHash must be provided together for a detailed export',
+    }
+  );
 
 // POST /v1/privacy/export/:sessionId (path param)
 export const PrivacyExportSchema = z.object({

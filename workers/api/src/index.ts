@@ -75,6 +75,22 @@ app.notFound((c) => {
 app.onError((err, c) => {
   console.error('API Error:', err);
 
+  if (
+    err.name === 'SyntaxError' &&
+    c.req.header('content-type')?.includes('application/json')
+  ) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: 'Request body must contain valid JSON',
+        },
+      },
+      400
+    );
+  }
+
   // Don't expose internal errors in production
   const isProduction = c.env.ENVIRONMENT === 'production';
   const message = isProduction

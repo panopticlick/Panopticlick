@@ -12,6 +12,7 @@ import {
   EntropyMeter,
 } from '@/components/ui';
 import { api } from '@/lib/api-client';
+import { mapAuctionResponse } from '@/lib/rtb-mapping';
 import { formatCPM } from '@/lib/utils';
 import type { FingerprintPayload, RTBBid, Persona } from '@panopticlick/types';
 
@@ -63,37 +64,14 @@ export default function RTBSimulatorPage() {
       // Try to augment with API-backed simulation (population stats, market multipliers)
       try {
         const apiResult = await api.rtb.simulate(fp);
-        const apiBids = (apiResult as any)?.auction?.bids || [];
+        const mapped = mapAuctionResponse(apiResult);
 
-        if (apiBids.length > 0) {
-          const mappedBids: RTBBid[] = apiBids.map((bid: any, index: number) => ({
-            bidder: bid.bidder || bid.name || `DSP ${index + 1}`,
-            amount: bid.amount ?? bid.bid ?? 0,
-            interest: bid.interest || bid.type || 'general',
-            confidence: bid.confidence ?? 0.8,
-            timestamp: Date.now(),
-          }));
-
-          const apiWinner = (apiResult as any)?.auction?.winner;
-          const mappedWinner: RTBBid | null = apiWinner
-            ? {
-                bidder: apiWinner.bidder || apiWinner.name || mappedBids[0]?.bidder || 'Winner',
-                amount: apiWinner.amount ?? apiWinner.winningBid ?? mappedBids[0]?.amount ?? 0,
-                interest: apiWinner.interest || apiWinner.type || mappedBids[0]?.interest || 'general',
-                confidence: apiWinner.confidence ?? 0.9,
-                timestamp: Date.now(),
-              }
-            : mappedBids[0] || null;
-
-          setBids(mappedBids);
-          setWinner(mappedWinner);
-          setAverageCPM((apiResult as any)?.auction?.averageCPM ?? localSim.averageCPM);
-          if ((apiResult as any)?.personas) {
-            setPersonas((apiResult as any).personas as Persona[]);
-          }
-          if ((apiResult as any)?.entropy?.totalBits) {
-            setEntropyBits((apiResult as any).entropy.totalBits);
-          }
+        if (mapped) {
+          setBids(mapped.bids);
+          setWinner(mapped.winner);
+          setAverageCPM(mapped.averageCPM ?? localSim.averageCPM);
+          if (mapped.personas) setPersonas(mapped.personas);
+          if (mapped.entropyBits !== null) setEntropyBits(mapped.entropyBits);
           setValueSource('api');
         }
       } catch (err) {

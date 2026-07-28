@@ -27,6 +27,32 @@ interface ComparisonStats {
   }>;
 }
 
+export interface AIChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AIChatContext {
+  entropyBits?: number;
+  averageCPM?: number;
+  defenseScore?: number;
+  personas?: string[];
+  /** Legacy worker fields kept during the rolling deployment. */
+  entropy?: number;
+  uniqueness?: string;
+  trackers?: number;
+}
+
+export interface AIChatResponse {
+  success: boolean;
+  message: {
+    id?: string;
+    role: 'assistant';
+    content: string;
+  };
+  meta?: { fallback?: boolean };
+}
+
 // API Configuration
 // Support both legacy and current env names for API base
 const ENV_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -402,6 +428,53 @@ export const api = {
         averageEntropy: res.averageEntropy,
         componentStats: {},
       };
+    },
+  },
+
+  /**
+   * AI chat endpoints
+   */
+  ai: {
+    /**
+     * Multi-turn chat with the analysis assistant. The worker prepends its own
+     * system prompt; we only ever send user/assistant turns.
+     */
+    async chat(
+      messages: AIChatMessage[],
+      fingerprintContext?: AIChatContext
+    ): Promise<AIChatResponse> {
+      // The worker caps history at 20 turns. The browser never sends a system
+      // turn; policy remains owned by the worker.
+      const recentMessages = messages.slice(-20);
+
+      try {
+        return await apiRequest<AIChatResponse>('/v1/ai/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            messages: recentMessages,
+            fingerprintContext,
+          }),
+        });
+      } catch (error) {
+        // During a rolling deployment, the previous worker only understands
+        // `{ prompt }`. Retry validation failures once with the last user turn;
+        // network/authorization/rate-limit errors must keep their real status.
+        const legacyCompatible =
+          error instanceof APIError && (error.status === 400 || error.status === 422);
+        const latestUserMessage = [...recentMessages]
+          .reverse()
+          .find((message) => message.role === 'user');
+
+        if (!legacyCompatible || !latestUserMessage) throw error;
+
+        return apiRequest<AIChatResponse>('/v1/ai/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            prompt: latestUserMessage.content,
+            fingerprintContext,
+          }),
+        });
+      }
     },
   },
 

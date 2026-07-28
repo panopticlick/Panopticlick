@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "project": "panopticlick.org",
+  "updated_at": "2026-07-28T04:03:19Z",
+  "status": "production_verified",
+  "site_stage": "live",
+  "site_type": "privacy_diagnostics",
+  "canonical_url": "https://panopticlick.org/",
+  "production_urls": [
+    "https://panopticlick.org/"
+  ],
+  "custom_domains": [
+    "panopticlick.org",
+    "www.panopticlick.org"
+  ],
+  "source_path": "/Volumes/SSD/dev/ip-dataset/panopticlick.org",
+  "platform": "cloudflare_pages_worker",
+  "account_alias": "Affiliateberry",
+  "account_id": "201945e73bc3a4f6f77de30504c0687f",
+  "production": {
+    "apex_url": "https://panopticlick.org/",
+    "custom_domains": [
+      "panopticlick.org",
+      "www.panopticlick.org"
+    ],
+    "status": "production_verified",
+    "deployed_at": "2026-07-28T04:03:19Z",
+    "version_id": "f3aabfe1-f8e7-441b-a56f-3e70270b95e4"
+  },
+  "deployment": {
+    "pages_project": "panopticlick",
+    "pages_deployment_url": "https://b79b81e3.panopticlick-8ys.pages.dev/",
+    "worker_name": "panopticlick-api",
+    "worker_version_id": "f3aabfe1-f8e7-441b-a56f-3e70270b95e4",
+    "api_url": "https://api.panopticlick.org/",
+    "source_commit": "5ff7cbe",
+    "source_tree_dirty": true,
+    "wrangler_version": "3.114.15",
+    "cron": "0 3 * * *"
+  },
+  "quality": {
+    "remote_verify": "pass",
+    "typecheck_tasks": "8/8",
+    "test_files_passed": 16,
+    "tests_passed": 213,
+    "tests_skipped": 1,
+    "static_routes": 25,
+    "preview_browser_acceptance": "pass_desktop_and_390",
+    "production_browser_acceptance": "pass_desktop_and_390",
+    "production_http_smoke": "pass",
+    "production_api_smoke": "pass",
+    "csp_violations": 0,
+    "console_errors": 0,
+    "page_errors": 0,
+    "horizontal_overflow_css_px": 0,
+    "full_validation_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260728T040056Z"
+  },
+  "public_qa_receipts": [
+    {
+      "scope": "public_production",
+      "validation_kind": "browser",
+      "target_url": "https://panopticlick.org/",
+      "status": "passed",
+      "observed_at": "2026-07-28T03:52:53Z",
+      "evidence_path": "/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260728T035253Z-result.json"
+    }
+  ],
+  "credentials": {
+    "required_keys": [
+      "CLOUDFLARE_ACCOUNT_ID",
+      "CLOUDFLARE_API_TOKEN",
+      "IPBOT_API_KEY",
+      "IP_HASH_SALT",
+      "OPENROUTER_API_KEY",
+      "SESSION_TOKEN_SECRET"
+    ],
+    "values_recorded": false
+  },
+  "known_blockers": [
+    {
+      "owner": "cloudflare-account-operator",
+      "issue": "AI Search and AI crawler user agents receive a zone-level 403",
+      "next_action": "Change the Cloudflare AI bot policy with a token or dashboard role that has zone settings write permission, then repeat crawler-UA probes."
+    }
+  ]
+}

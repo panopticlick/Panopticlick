@@ -9,9 +9,8 @@ import {
   DocumentSection,
   Stamp,
   Button,
-  ScoreMeter,
 } from '@/components/ui';
-import type { BlockerAnalysis, BlockerTestResult } from '@panopticlick/fingerprint-sdk';
+import type { BlockerAnalysis } from '@panopticlick/fingerprint-sdk';
 
 type TestPhase = 'ready' | 'testing' | 'complete';
 
@@ -35,8 +34,6 @@ export default function BlockerTestPage() {
       const totalTests = resources.length;
 
       // Custom test with progress updates
-      const results: BlockerTestResult[] = [];
-
       for (let i = 0; i < totalTests; i++) {
         const resource = resources[i];
         setCurrentTest(`Testing ${resource.name}...`);
@@ -201,7 +198,9 @@ function ReadyPhase({ onStart }: { onStart: () => void }) {
                 <h4 className="font-bold">Detection</h4>
                 <p className="text-sm text-ink-200">
                   We measure which resources load successfully and which are blocked.
-                  This reveals what your blocker filters.
+                  A probe only counts as "loaded" if the script actually executes.
+                  If the page cannot verify its own first-party control probe, the run
+                  is marked inconclusive instead of guessing.
                 </p>
               </div>
             </div>
@@ -344,20 +343,29 @@ function ResultsPhase({
     return 'text-alert-red';
   };
 
+  const isInconclusive = result.inconclusive;
+  const measuredSubtitle = result.name
+    ? `${result.name} detected`
+    : result.detected
+    ? 'Content blocker detected'
+    : 'No ad blocker detected';
+
   return (
     <div className="space-y-6">
       <Document
         variant="classified"
-        watermark={result.detected ? 'PROTECTED' : 'UNPROTECTED'}
+        watermark={isInconclusive ? 'INCONCLUSIVE' : result.detected ? 'PROTECTED' : 'UNPROTECTED'}
       >
         <DocumentHeader
           title="Blocker Test Results"
-          subtitle={
-            result.detected
-              ? `${result.name || 'Ad blocker'} detected`
-              : 'No ad blocker detected'
+          subtitle={isInconclusive ? 'Measurement inconclusive' : measuredSubtitle}
+          classification={
+            isInconclusive
+              ? 'unclassified'
+              : result.effectiveness >= 50
+              ? 'confidential'
+              : 'secret'
           }
-          classification={result.effectiveness >= 50 ? 'confidential' : 'secret'}
           date={new Date()}
         />
 
@@ -368,21 +376,42 @@ function ResultsPhase({
           animate={{ scale: 1 }}
         >
           <div className="inline-block">
-            <div
-              className={`font-mono text-7xl font-bold ${getEffectivenessColor(
-                result.effectiveness
-              )}`}
-            >
-              {result.effectiveness}%
-            </div>
-            <div className="font-serif text-xl mt-2">
-              {getEffectivenessLabel(result.effectiveness)} Protection
-            </div>
-            {result.name && (
-              <div className="text-ink-300 mt-1">
-                Detected: {result.name}
-                {result.version && ` v${result.version}`}
+            {isInconclusive ? (
+              <div className="space-y-4">
+                <Stamp variant="denied" animated={false} size="lg">
+                  Inconclusive
+                </Stamp>
+                <div className="max-w-2xl text-left text-sm text-ink-200">
+                  {result.message}
+                </div>
+                <div className="font-mono text-xs uppercase tracking-wider text-ink-300">
+                  Score withheld until the control probe can verify the bait files
+                </div>
               </div>
+            ) : (
+              <>
+                <div
+                  className={`font-mono text-7xl font-bold ${getEffectivenessColor(
+                    result.effectiveness
+                  )}`}
+                >
+                  {result.effectiveness}%
+                </div>
+                <div className="font-serif text-xl mt-2">
+                  {getEffectivenessLabel(result.effectiveness)} Protection
+                </div>
+                {result.name && (
+                  <div className="text-ink-300 mt-1">
+                    Detected: {result.name}
+                    {result.version && ` v${result.version}`}
+                  </div>
+                )}
+                {result.inconclusiveCount > 0 && (
+                  <div className="mt-3 font-mono text-xs uppercase tracking-wider text-ink-300">
+                    {result.inconclusiveCount} probe{result.inconclusiveCount === 1 ? '' : 's'} excluded as inconclusive
+                  </div>
+                )}
+              </>
             )}
           </div>
         </motion.div>
@@ -401,9 +430,14 @@ function ResultsPhase({
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <span className="font-mono text-sm uppercase">{category}</span>
-                    <span className="text-xs text-ink-300 ml-2">
-                      {score.blocked}/{score.total} blocked
-                    </span>
+                    <div className="text-xs text-ink-300 mt-1">
+                      {score.blocked}/{score.measured} blocked
+                      {score.inconclusive > 0 && (
+                        <span className="ml-2">
+                          {score.inconclusive} inconclusive
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <span
                     className={`font-mono font-bold ${getEffectivenessColor(
@@ -444,10 +478,18 @@ function ResultsPhase({
                 <span className="text-paper-400">{test.resource.name}</span>
                 <span
                   className={
-                    test.blocked ? 'text-alert-green' : 'text-alert-red'
+                    test.status === 'blocked'
+                      ? 'text-alert-green'
+                      : test.status === 'loaded'
+                      ? 'text-alert-red'
+                      : 'text-paper-300'
                   }
                 >
-                  {test.blocked ? 'BLOCKED' : 'LOADED'}
+                  {test.status === 'blocked'
+                    ? 'BLOCKED'
+                    : test.status === 'loaded'
+                    ? 'LOADED'
+                    : 'INCONCLUSIVE'}
                 </span>
               </div>
             ))}
@@ -527,8 +569,16 @@ function ResultsPhase({
 
       {/* Stamps */}
       <div className="flex justify-center gap-6">
-        <Stamp variant={result.effectiveness >= 50 ? 'protected' : 'exposed'}>
-          {getEffectivenessLabel(result.effectiveness)}
+        <Stamp
+          variant={
+            isInconclusive
+              ? 'denied'
+              : result.effectiveness >= 50
+              ? 'protected'
+              : 'exposed'
+          }
+        >
+          {isInconclusive ? 'Inconclusive' : getEffectivenessLabel(result.effectiveness)}
         </Stamp>
         <Stamp variant="verified">Analyzed</Stamp>
       </div>

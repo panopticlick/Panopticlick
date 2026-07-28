@@ -135,6 +135,51 @@ describe('ScanCollectSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts and preserves the current SDK plugin and font shapes', () => {
+    const result = ScanCollectSchema.safeParse({
+      ...validPayload,
+      fingerprint: {
+        ...validPayload.fingerprint,
+        hardware: {
+          ...validPayload.fingerprint.hardware,
+          cpu: 10,
+          memory: 16,
+        },
+        software: {
+          ...validPayload.fingerprint.software,
+          plugins: [
+            {
+              name: 'PDF Viewer',
+              filename: 'internal-pdf-viewer',
+              description: 'Portable Document Format',
+            },
+          ],
+          fonts: null,
+          cookiesEnabled: true,
+        },
+        capabilities: {
+          localStorage: true,
+          webGL: true,
+        },
+        network: {
+          connectionType: '4g',
+          downlink: 10,
+        },
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.fingerprint.hardware.cpu).toBe(10);
+      expect(result.data.fingerprint.software.plugins?.[0]).toMatchObject({
+        name: 'PDF Viewer',
+      });
+      expect(result.data.fingerprint.software.fonts).toBeNull();
+      expect(result.data.fingerprint.capabilities?.webGL).toBe(true);
+      expect(result.data.fingerprint.network?.connectionType).toBe('4g');
+    }
+  });
 });
 
 describe('RTBSimulateSchema', () => {
@@ -421,14 +466,23 @@ describe('PrivacyMyDataSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept optional fingerprintHash', () => {
+  it('should accept sessionId and fingerprintHash together', () => {
     const result = PrivacyMyDataSchema.safeParse({
+      sessionId: 'ses_test123',
       fingerprintHash: 'abc123def456',
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.fingerprintHash).toBe('abc123def456');
+      expect(result.data.sessionId).toBe('ses_test123');
     }
+  });
+
+  it('should reject a fingerprintHash without session ownership context', () => {
+    const result = PrivacyMyDataSchema.safeParse({
+      fingerprintHash: 'abc123def456',
+    });
+    expect(result.success).toBe(false);
   });
 
   // ipHash is deliberately not an accepted lookup key: behind CGNAT one hash

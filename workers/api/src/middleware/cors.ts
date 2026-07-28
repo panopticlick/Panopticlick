@@ -29,13 +29,10 @@ export async function corsMiddleware(c: Context, next: Next) {
   const ALLOWED_ORIGINS = getAllowedOrigins(c.env as CorsEnv);
   const origin = c.req.header('origin');
 
-  // Check if origin is allowed
-  // Use strict regex to prevent bypasses like "evil.panopticlick.org" or "evilpanopticlick.org"
-  const isValidSubdomain = origin && /^https:\/\/[a-z0-9-]+\.panopticlick\.org$/.test(origin);
-  const isAllowed = origin && (
-    ALLOWED_ORIGINS.includes(origin) ||
-    isValidSubdomain
-  );
+  // Production is an explicit allowlist. Do not implicitly trust every future
+  // subdomain: an abandoned preview/custom hostname could otherwise call the
+  // paid AI proxy as a first-party origin.
+  const isAllowed = Boolean(origin && ALLOWED_ORIGINS.includes(origin));
 
   // Handle preflight
   if (c.req.method === 'OPTIONS') {

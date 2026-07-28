@@ -15,7 +15,12 @@ import type {
   ValuationReport,
 } from '@panopticlick/types';
 import { api } from './api-client';
-import { getConsent, subscribeConsent, type ConsentState } from './consent';
+import {
+  consentAllowsStorage,
+  getConsent,
+  subscribeConsent,
+  type ConsentState,
+} from './consent';
 import { buildDossier, type DossierEntry } from './dossier';
 
 export type ScanPhase = 'idle' | 'scanning' | 'analyzing' | 'complete';
@@ -141,8 +146,9 @@ export function useScan(): ScanController {
   useEffect(() => {
     const apply = (state: ConsentState) => {
       setConsentLocked(state === 'denied');
-      if (state === 'granted') setStoreData(true);
-      if (state === 'denied') setStoreData(false);
+      // Both denied and not-yet-decided are local-only. Resetting privacy
+      // choices must never leave a previous opt-in latched on.
+      setStoreData(consentAllowsStorage(state));
     };
     apply(getConsent());
     return subscribeConsent(apply);

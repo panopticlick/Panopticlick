@@ -96,11 +96,15 @@ export function mapAuctionResponse(response: unknown): MappedAuction | null {
   if (bids.length === 0) return null;
 
   const winnerFromResponse = mapBid(auction.winner, 0);
+  const highestBid = bids.reduce<RTBBid | null>(
+    (best, bid) => (!best || bid.amount > best.amount ? bid : best),
+    null
+  );
   const entropy = isRecord(response.entropy) ? response.entropy : null;
 
   return {
     bids,
-    winner: winnerFromResponse ?? bids[0] ?? null,
+    winner: winnerFromResponse ?? highestBid,
     averageCPM: pickNumber(auction, 'averageCPM', 'avgCPM'),
     personas: mapPersonas(response.personas),
     entropyBits: entropy ? pickNumber(entropy, 'totalBits', 'bits') : null,

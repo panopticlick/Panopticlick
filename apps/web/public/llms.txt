@@ -2,7 +2,7 @@
 
 > Free browser fingerprinting test and privacy education project. Panopticlick shows how uniquely identifiable your browser is, simulates the real-time bidding (RTB) auctions that monetize your data, and teaches you how to defend against tracking. Independent project, not affiliated with the Electronic Frontier Foundation (EFF).
 
-All analysis runs client-side in your browser. Nothing is stored without explicit consent; IP addresses are only ever stored as SHA-256 hashes, and stored data is automatically deleted after 30 days.
+Analysis starts locally in your browser. Nothing is sent for storage without explicit consent; opted-in sessions use salted IP hashes and expire after 30 days, while de-identified fingerprint aggregates expire after 90 days.
 
 ## Tools
 
@@ -10,7 +10,7 @@ All analysis runs client-side in your browser. Nothing is stored without explici
 - https://panopticlick.org/simulation/rtb/ : RTB auction simulator — runs a simulated real-time bidding auction on your fingerprint with DSP bids and CPM prices.
 - https://panopticlick.org/tests/webrtc/ : WebRTC leak test — checks whether WebRTC exposes your real IP address, even behind a VPN.
 - https://panopticlick.org/tests/dns/ : DNS leak test — checks whether your DNS queries bypass your VPN and reach your ISP.
-- https://panopticlick.org/tests/blocker/ : Ad blocker test — measures how effectively your blocker stops real-world tracker scripts.
+- https://panopticlick.org/tests/blocker/ : Ad blocker test — uses first-party bait scripts with tracker-like paths to measure which filter rules fire, without contacting real trackers.
 - https://panopticlick.org/tests/hsts/ : HSTS supercookie demo — interactive demonstration of tracking that survives cookie clearing.
 - https://panopticlick.org/simulation/cname/ : CNAME cloaking explainer — how trackers disguise themselves as first-party subdomains.
 - https://panopticlick.org/simulation/cookie-sync/ : Cookie syncing explainer — how ad networks share your identity via ID bridging.

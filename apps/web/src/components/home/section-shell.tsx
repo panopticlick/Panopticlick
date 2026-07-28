@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { motion, useReducedMotion } from 'framer-motion';
-import { Stamp } from '@/components/ui';
-import { cn } from '@/lib/utils';
+import { motion, useReducedMotion } from "framer-motion";
+import { Stamp } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 interface SectionShellProps {
   id: string;
@@ -18,7 +18,7 @@ interface SectionShellProps {
    * engines too.
    */
   lockedSummary?: string;
-  tone?: 'paper' | 'paper-100';
+  tone?: "paper" | "paper-100";
   className?: string;
   children: React.ReactNode;
 }
@@ -35,7 +35,7 @@ export function SectionShell({
   subtitle,
   locked = false,
   lockedSummary,
-  tone = 'paper',
+  tone = "paper",
   className,
   children,
 }: SectionShellProps) {
@@ -46,21 +46,26 @@ export function SectionShell({
       id={id}
       aria-labelledby={`${id}-title`}
       className={cn(
-        'scroll-mt-20 py-14',
-        tone === 'paper-100' ? 'bg-paper-100' : 'bg-paper',
-        className
+        "scroll-mt-20 py-14",
+        tone === "paper-100" ? "bg-paper-100" : "bg-paper",
+        className,
       )}
     >
       <div className="container mx-auto max-w-4xl px-4">
         <header className="mb-8">
           <p className="font-mono text-xs uppercase tracking-widest text-ink-300">
             File {fileNumber}
-            {locked && ' — sealed'}
+            {locked && " — sealed"}
           </p>
-          <h2 id={`${id}-title`} className="mt-1 font-serif text-3xl font-bold tracking-tight">
+          <h2
+            id={`${id}-title`}
+            className="mt-1 font-serif text-3xl font-bold tracking-tight"
+          >
             {title}
           </h2>
-          {subtitle && <p className="mt-2 max-w-2xl text-ink-200">{subtitle}</p>}
+          {subtitle && (
+            <p className="mt-2 max-w-2xl text-ink-200">{subtitle}</p>
+          )}
         </header>
 
         {locked ? (
@@ -69,8 +74,11 @@ export function SectionShell({
           <motion.div
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-10%' }}
-            transition={{ duration: reducedMotion ? 0.2 : 0.5, ease: 'easeOut' }}
+            viewport={{ once: true, margin: "-10%" }}
+            transition={{
+              duration: reducedMotion ? 0.2 : 0.5,
+              ease: "easeOut",
+            }}
           >
             {children}
           </motion.div>
@@ -93,7 +101,11 @@ function LockedPanel({ summary }: { summary?: string }) {
             />
           ))}
         </div>
-        <Stamp variant="denied" animated={false} className="self-start md:self-center">
+        <Stamp
+          variant="denied"
+          animated={false}
+          className="self-start md:self-center"
+        >
           Pending investigation
         </Stamp>
       </div>

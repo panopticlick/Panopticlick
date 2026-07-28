@@ -14,6 +14,20 @@ import type { Env } from '../types';
 const ai = new Hono<{ Bindings: Env }>();
 
 const fingerprintContextSchema = z.object({
+  // Current single-page experience fields
+  entropyBits: z.number().min(0).max(256).optional(),
+  averageCPM: z.number().min(0).max(10_000).optional(),
+  defenseScore: z.number().min(0).max(100).optional(),
+  personas: z
+    .array(
+      z.union([
+        z.string().min(1).max(100),
+        z.object({ name: z.string().min(1).max(100) }),
+      ])
+    )
+    .max(8)
+    .optional(),
+  // Legacy floating-chat fields remain accepted during the rollout.
   entropy: z.number().optional(),
   uniqueness: z.string().optional(),
   trackers: z.number().optional(),
@@ -40,7 +54,7 @@ const chatRequestSchema = z
     message: 'Either messages or prompt is required',
   });
 
-const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
+const DEFAULT_MODEL = 'openrouter/free';
 
 /**
  * POST /api/ai/chat
@@ -198,20 +212,36 @@ function buildSystemPrompt(): string {
 - Keep responses under 100 words when possible
 - Focus on practical advice
 - Don't make up data or statistics
+- Treat CPM, annual value, personas, and auction results as teaching-model outputs. Never imply that Panopticlick observed a live bid, a real advertiser decision, or money paid for this user.
 - If unsure, direct users to run another test or check our documentation`;
 }
 
 function buildUserPrompt(
   prompt: string,
-  context?: { entropy?: number; uniqueness?: string; trackers?: number }
+  context?: FingerprintContext
 ): string {
   let contextStr = '';
 
   if (context) {
     const parts = [];
-    if (context.entropy) parts.push(`Entropy: ${context.entropy} bits`);
+    const entropy = context.entropyBits ?? context.entropy;
+    if (entropy !== undefined) parts.push(`Entropy: ${entropy} bits`);
+    if (context.averageCPM !== undefined) {
+      parts.push(`Average modeled CPM: $${context.averageCPM.toFixed(2)}`);
+    }
+    if (context.defenseScore !== undefined) {
+      parts.push(`Defense score: ${context.defenseScore}/100`);
+    }
+    if (context.personas?.length) {
+      const names = context.personas.map((persona) =>
+        typeof persona === 'string' ? persona : persona.name
+      );
+      parts.push(`Modeled audience personas: ${names.join(', ')}`);
+    }
     if (context.uniqueness) parts.push(`Uniqueness: ${context.uniqueness}`);
-    if (context.trackers) parts.push(`Trackers detected: ${context.trackers}`);
+    if (context.trackers !== undefined) {
+      parts.push(`Trackers detected: ${context.trackers}`);
+    }
 
     if (parts.length > 0) {
       contextStr = `\n\n[User's fingerprint context: ${parts.join(', ')}]`;
@@ -223,30 +253,57 @@ function buildUserPrompt(
 
 function buildFallbackResponse(
   prompt: string,
-  context?: { entropy?: number; uniqueness?: string; trackers?: number }
+  context?: FingerprintContext
 ): string {
   const normalized = prompt.toLowerCase();
-
-  // Context-aware responses
-  if (context?.entropy && context.entropy > 30) {
-    return "Your browser has high entropy (over 30 bits), making you highly unique. This means you're easily trackable even without cookies. Consider using privacy-focused browsers like Brave or Firefox with fingerprint protection enabled.";
-  }
+  const entropy = context?.entropyBits ?? context?.entropy;
 
   // Keyword-based responses
+  if (
+    normalized.includes('protect') ||
+    normalized.includes('safe') ||
+    normalized.includes('defense')
+  ) {
+    const score =
+      context?.defenseScore !== undefined
+        ? ` Your current defense score is ${context.defenseScore}/100.`
+        : '';
+    return `Start with uBlock Origin, then enable your browser's built-in fingerprint protection.${score} Re-run the scan after each change so you can see which signals actually improved instead of stacking extensions blindly.`;
+  }
+
+  if (
+    normalized.includes('worth') ||
+    normalized.includes('value') ||
+    normalized.includes('cpm')
+  ) {
+    const modeledCPM =
+      context?.averageCPM !== undefined
+        ? ` This case models an average CPM of $${context.averageCPM.toFixed(2)}.`
+        : '';
+    return `The price shown is a teaching-model CPM—the estimated advertiser spend per 1,000 impressions—not money paid to you.${modeledCPM} Treat it as a scenario whose assumptions are documented on the methodology page, not a live-market quote.`;
+  }
+
   if (normalized.includes('entropy')) {
     return 'Entropy measures how unique your browser fingerprint is. Higher entropy (measured in bits) means more uniqueness. 33+ bits means you\'re identifiable among billions of users. Lower your entropy by using common browser configurations and privacy extensions.';
+  }
+
+  if (normalized.includes('unique') || normalized.includes('fingerprint')) {
+    if (entropy !== undefined && entropy > 30) {
+      return `This case measures ${entropy.toFixed(1)} bits of entropy, which is a highly distinctive fingerprint in the model. It is an estimate built from signal priors—not a claim that we observed every browser—so use it to compare defenses after changing one setting at a time.`;
+    }
+    return 'A fingerprint becomes distinctive when ordinary signals—display, GPU, timezone, fonts, and browser capabilities—combine into an unusual profile. The score is most useful as a before-and-after measurement when you test a privacy defense.';
   }
 
   if (normalized.includes('track') || normalized.includes('follow')) {
     return 'Trackers use your fingerprint to follow you across websites without cookies. Your unique browser configuration acts like a signature. Use adblockers, disable WebRTC, and limit JavaScript to reduce tracking.';
   }
 
-  if (normalized.includes('protect') || normalized.includes('safe')) {
-    return 'To protect yourself: 1) Use Brave or Firefox with privacy settings enabled, 2) Install uBlock Origin and Privacy Badger, 3) Disable WebRTC, 4) Use standard screen resolutions. Check our Defense Armory page for detailed guides.';
-  }
-
   if (normalized.includes('canvas') || normalized.includes('webgl')) {
     return 'Canvas and WebGL fingerprinting exploit how your GPU renders graphics. Each device produces slightly different results. You can block these using Canvas Blocker extension or browser fingerprint protection features.';
+  }
+
+  if (entropy !== undefined && entropy > 30) {
+    return `This case has high modeled entropy (${entropy.toFixed(1)} bits), so its combination of browser signals is unusually distinctive. Ask about a specific signal or defense and I can turn that part of the report into a concrete next step.`;
   }
 
   if (normalized.includes('value') || normalized.includes('worth') || normalized.includes('cpm')) {

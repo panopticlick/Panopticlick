@@ -71,20 +71,21 @@ privacy.post('/opt-out', async (c) => {
     const ctx = getRequestContext(c);
     const deletedCount = { sessions: 0, fingerprints: 0 };
 
-    // Verify ownership of every submitted session before deleting anything.
+    // Verify ownership of every submitted session before reading or deleting
+    // anything. Partial acceptance would make the request contract misleading
+    // and could produce a partial deletion when one token is mistyped.
     const verified: string[] = [];
     for (const session of sessions) {
-      if (await verifySessionToken(session.id, session.token, secret)) {
-        verified.push(session.id);
+      if (!(await verifySessionToken(session.id, session.token, secret))) {
+        return c.json(sessionAuthError({ ok: false, reason: 'invalid' }), 401);
       }
-    }
-
-    if (verified.length === 0) {
-      return c.json(sessionAuthError({ ok: false, reason: 'invalid' }), 401);
+      verified.push(session.id);
     }
 
     // Fingerprint hashes proven to belong to the caller. Needed before the
-    // delete, because the session row is what links id to hash.
+    // delete, because the session row is what links id to hash. This is a
+    // separate read pass so a fingerprint mismatch cannot delete sessions
+    // before returning 403.
     const ownedHashes = new Set<string>();
 
     for (const sessionId of verified) {
@@ -95,12 +96,6 @@ privacy.post('/opt-out', async (c) => {
         .first<{ fingerprint_hash: string | null }>();
 
       if (row?.fingerprint_hash) ownedHashes.add(row.fingerprint_hash);
-
-      const result = await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?')
-        .bind(sessionId)
-        .run();
-
-      deletedCount.sessions += result.meta.changes ?? 0;
     }
 
     // A fingerprint hash is handed to the client in every /collect response, so
@@ -120,22 +115,33 @@ privacy.post('/opt-out', async (c) => {
       );
     }
 
+    for (const sessionId of verified) {
+      const result = await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?')
+        .bind(sessionId)
+        .run();
+
+      deletedCount.sessions += result.meta.changes ?? 0;
+    }
+
     if (fingerprintHash) {
-      // Explicit hash erasure: removes this fingerprint's history across all
-      // sessions, not just the ones named above.
-      const sessionResult = await c.env.DB.prepare(
-        'DELETE FROM sessions WHERE fingerprint_hash = ?'
+      // The fingerprint aggregate may be shared by multiple identical browser
+      // configurations. A session token authorizes deletion of the submitted
+      // sessions, not every other session with the same configuration hash.
+      const remaining = await c.env.DB.prepare(
+        'SELECT COUNT(*) AS count FROM sessions WHERE fingerprint_hash = ?'
       )
         .bind(fingerprintHash)
-        .run();
+        .first<{ count: number }>();
 
-      deletedCount.sessions += sessionResult.meta.changes ?? 0;
+      if ((remaining?.count ?? 0) === 0) {
+        const fpResult = await c.env.DB.prepare(
+          'DELETE FROM fingerprints WHERE hash = ?'
+        )
+          .bind(fingerprintHash)
+          .run();
 
-      const fpResult = await c.env.DB.prepare('DELETE FROM fingerprints WHERE hash = ?')
-        .bind(fingerprintHash)
-        .run();
-
-      deletedCount.fingerprints += fpResult.meta.changes ?? 0;
+        deletedCount.fingerprints += fpResult.meta.changes ?? 0;
+      }
     }
 
     // Note: there is deliberately no `DELETE ... WHERE ip_hash = ?` here.
@@ -203,15 +209,16 @@ privacy.post('/opt-out', async (c) => {
  * GET /privacy/my-data
  * Request data export (GDPR Article 20).
  *
- * Records are only returned for a named fingerprint hash. An ip_hash alone is
- * shared by every visitor behind the same NAT, so returning its rows would
- * hand out the neighbours' session ids and fingerprint hashes.
+ * Without ownership proof this endpoint returns aggregate counts only. A
+ * detailed response requires a session id + its fingerprint hash and the
+ * X-Session-Token minted for that session.
  */
 privacy.get('/my-data', async (c) => {
   const ctx = getRequestContext(c);
 
   try {
     const validation = validateRequest(PrivacyMyDataSchema, {
+      sessionId: c.req.query('sessionId') || undefined,
       fingerprintHash: c.req.query('fingerprintHash') || undefined,
     });
 
@@ -219,9 +226,9 @@ privacy.get('/my-data', async (c) => {
       return c.json({ success: false, error: validation.error }, 400);
     }
 
-    const { fingerprintHash } = validation.data;
+    const { sessionId, fingerprintHash } = validation.data;
 
-    if (!fingerprintHash) {
+    if (!sessionId || !fingerprintHash) {
       const counts = await c.env.DB.prepare(
         `SELECT
           COUNT(*) AS session_count,
@@ -246,7 +253,12 @@ privacy.get('/my-data', async (c) => {
       return c.json(aggregate);
     }
 
-    const sessions = await c.env.DB.prepare(
+    const auth = await authorizeSession(c, sessionId);
+    if (!auth.ok) {
+      return c.json(sessionAuthError(auth), 401);
+    }
+
+    const session = await c.env.DB.prepare(
       `SELECT
         id,
         fingerprint_hash,
@@ -255,16 +267,14 @@ privacy.get('/my-data', async (c) => {
         created_at,
         consent_given
       FROM sessions
-      WHERE ip_hash = ? AND fingerprint_hash = ?
-      ORDER BY created_at DESC
-      LIMIT 100`
+      WHERE id = ? AND fingerprint_hash = ?`
     )
-      .bind(ctx.ipHash, fingerprintHash)
-      .all();
+      .bind(sessionId, fingerprintHash)
+      .first<Record<string, unknown>>();
 
     const fingerprints: Record<string, unknown>[] = [];
 
-    if (sessions.results && sessions.results.length > 0) {
+    if (session) {
       const fpResults = await c.env.DB.prepare(
         `SELECT
           hash,
@@ -286,11 +296,11 @@ privacy.get('/my-data', async (c) => {
     const response: MyDataResponse = {
       success: true,
       data: {
-        sessions: sessions.results || [],
+        sessions: session ? [session] : [],
         fingerprints,
         exportedAt: new Date().toISOString(),
         note:
-          'This export contains the data recorded for this fingerprint on your current IP address. ' +
+          'This export contains the data recorded for the session you proved ownership of. ' +
           'IP addresses are hashed and cannot be reversed.',
       },
     };

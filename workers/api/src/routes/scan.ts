@@ -17,11 +17,7 @@ import type {
   NetworkIntelligence,
 } from '@panopticlick/types';
 
-/**
- * `sessionToken` is not yet part of the shared ScanStartResponse contract in
- * @panopticlick/types; the field is additive and optional so the current
- * frontend keeps working until it starts storing the token.
- */
+/** Additive alias retained while older generated clients remain in circulation. */
 type ScanStartResponseWithToken = ScanStartResponse & { sessionToken?: string };
 
 const scan = new Hono<{ Bindings: Env }>();
@@ -108,7 +104,8 @@ scan.post('/start', async (c) => {
 
   // Log to analytics
   c.env.ANALYTICS?.writeDataPoint({
-    blobs: [sessionId, ctx.country, ctx.asn],
+    // Keep Analytics Engine aggregate-only if the binding is enabled later.
+    blobs: [ctx.country, ctx.asn],
     doubles: [1], // scan_started
     indexes: ['scan_start'],
   });
@@ -122,9 +119,22 @@ scan.post('/start', async (c) => {
  */
 scan.post('/collect', async (c) => {
   const ctx = getRequestContext(c);
+  const body = await c.req.json().catch(() => null);
+
+  if (body === null) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: 'Request body must contain valid JSON',
+        },
+      },
+      400
+    );
+  }
 
   try {
-    const body = await c.req.json();
     const validation = validateRequest(ScanCollectSchema, body);
 
     if (!validation.success) {
@@ -224,7 +234,7 @@ scan.post('/collect', async (c) => {
 
     // Log to analytics
     c.env.ANALYTICS?.writeDataPoint({
-      blobs: [sessionId, countryCode, report.entropy.tier],
+      blobs: [countryCode, report.entropy.tier],
       doubles: [report.entropy.totalBits, report.valuation.averageCPM],
       indexes: ['scan_complete'],
     });

@@ -1,1 +1,2 @@
-export { FingerprintChat } from './fingerprint-chat';
+export { ChatLauncher } from './chat-launcher';
+export { ChatPanel } from './chat-panel';

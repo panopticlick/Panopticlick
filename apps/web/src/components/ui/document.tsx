@@ -51,6 +51,12 @@ interface DocumentHeaderProps {
   caseNumber?: string;
   date?: Date | string;
   className?: string;
+  /**
+   * Heading level. Defaults to h1 for standalone pages; pass 'h2'/'h3' when the
+   * document sits inside a page that already owns the higher levels (the
+   * single-page home).
+   */
+  as?: 'h1' | 'h2' | 'h3';
 }
 
 /**
@@ -63,6 +69,7 @@ export function DocumentHeader({
   caseNumber,
   date,
   className,
+  as: Heading = 'h1',
 }: DocumentHeaderProps) {
   const classificationStyles = {
     unclassified: 'bg-ink-100 text-paper',
@@ -86,9 +93,9 @@ export function DocumentHeader({
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight">
+          <Heading className="font-serif text-2xl font-bold tracking-tight">
             {title}
-          </h1>
+          </Heading>
           {subtitle && (
             <p className="text-ink-200 font-mono text-sm mt-1">{subtitle}</p>
           )}

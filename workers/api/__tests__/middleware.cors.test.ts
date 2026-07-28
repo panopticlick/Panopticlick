@@ -67,7 +67,7 @@ describe('corsMiddleware', () => {
     expect(res.headers.get('Access-Control-Allow-Credentials')).toBeNull();
   });
 
-  it('accepts panopticlick.org subdomains but not lookalikes', async () => {
+  it('rejects unlisted subdomains and lookalikes', async () => {
     const app = appWithEnv();
 
     const subdomain = await app.request(
@@ -81,9 +81,7 @@ describe('corsMiddleware', () => {
       PROD_ENV
     );
 
-    expect(subdomain.headers.get('Access-Control-Allow-Origin')).toBe(
-      'https://staging.panopticlick.org'
-    );
+    expect(subdomain.headers.get('Access-Control-Allow-Origin')).toBeNull();
     expect(lookalike.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 

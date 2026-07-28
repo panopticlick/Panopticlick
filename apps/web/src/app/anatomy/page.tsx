@@ -403,7 +403,7 @@ export default function AnatomyIndexPage() {
               exposing and how unique your browser is.
             </p>
             <a
-              href="/scan/"
+              href="/#scan"
               className="inline-block bg-ink text-paper px-8 py-4 font-mono font-bold rounded-sm hover:bg-ink/90 transition-colors"
             >
               Run the Fingerprint Scan →

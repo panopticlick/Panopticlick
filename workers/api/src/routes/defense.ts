@@ -29,8 +29,22 @@ const defense = new Hono<{ Bindings: Env }>();
  * Test ad/tracker blocker effectiveness
  */
 defense.post('/blocker', async (c) => {
+  const body = await c.req.json().catch(() => null);
+
+  if (body === null) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: 'Request body must contain valid JSON',
+        },
+      },
+      400
+    );
+  }
+
   try {
-    const body = await c.req.json();
     const validation = validateRequest(DefenseBlockerSchema, body);
 
     if (!validation.success) {
@@ -90,8 +104,22 @@ defense.get('/dns', async (c) => {
  * Run comprehensive defense tests
  */
 defense.post('/test', async (c) => {
+  const body = await c.req.json().catch(() => null);
+
+  if (body === null) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: 'INVALID_JSON',
+          message: 'Request body must contain valid JSON',
+        },
+      },
+      400
+    );
+  }
+
   try {
-    const body = await c.req.json();
     const validation = validateRequest(DefenseTestSchema, body);
 
     if (!validation.success) {

@@ -14,11 +14,23 @@ export interface BaitResource {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
+export type BlockerTestStatus = 'loaded' | 'blocked' | 'inconclusive';
+
+export interface BlockerCategoryScore {
+  blocked: number;
+  total: number;
+  measured: number;
+  inconclusive: number;
+  score: number;
+}
+
 export interface BlockerTestResult {
   resource: BaitResource;
   blocked: boolean;
+  status: BlockerTestStatus;
   loadTime: number | null;
   method: 'script' | 'image' | 'fetch' | 'iframe';
+  reason: string;
 }
 
 export interface BlockerAnalysis {
@@ -26,9 +38,13 @@ export interface BlockerAnalysis {
   name: string | null;
   version: string | null;
   effectiveness: number;
-  categoryScores: Record<string, { blocked: number; total: number; score: number }>;
+  categoryScores: Record<string, BlockerCategoryScore>;
   results: BlockerTestResult[];
   recommendations: string[];
+  inconclusive: boolean;
+  measuredCount: number;
+  inconclusiveCount: number;
+  message: string | null;
 }
 
 /**
@@ -159,19 +175,95 @@ const BAIT_RESOURCES: BaitResource[] = [
   },
 ];
 
+const CONTROL_PROBE_URL = '/bait/control.js';
+
+interface ScriptProbeResult {
+  blocked: boolean;
+  status: BlockerTestStatus;
+  loadTime: number | null;
+  reason: string;
+}
+
+interface QuickBlockerDetectResult {
+  detected: boolean;
+  type: 'none' | 'basic' | 'standard' | 'aggressive';
+  inconclusive: boolean;
+}
+
+type BlockerRuntime = typeof globalThis & {
+  __panopticlickBaitFlags?: Record<string, boolean>;
+  __panopticlickControlLoaded?: boolean;
+};
+
+function getRuntime(): BlockerRuntime {
+  return globalThis as BlockerRuntime;
+}
+
+function clearBaitFlag(resourceId: string): void {
+  const runtime = getRuntime();
+  if (runtime.__panopticlickBaitFlags) {
+    delete runtime.__panopticlickBaitFlags[resourceId];
+  }
+}
+
+function hasBaitFlag(resourceId: string): boolean {
+  return Boolean(getRuntime().__panopticlickBaitFlags?.[resourceId]);
+}
+
+function clearControlFlag(): void {
+  delete getRuntime().__panopticlickControlLoaded;
+}
+
+function hasControlFlag(): boolean {
+  return Boolean(getRuntime().__panopticlickControlLoaded);
+}
+
 /**
  * Test if a script resource is blocked
  */
-async function testScript(url: string, timeout: number = 3000): Promise<{ blocked: boolean; loadTime: number | null }> {
+async function testScript(
+  url: string,
+  {
+    timeout = 3000,
+    resourceId,
+    control = false,
+  }: {
+    timeout?: number;
+    resourceId?: string;
+    control?: boolean;
+  } = {}
+): Promise<ScriptProbeResult> {
   return new Promise((resolve) => {
     const startTime = performance.now();
     const script = document.createElement('script');
     script.src = url;
     script.async = true;
 
-    const timeoutId = setTimeout(() => {
+    if (resourceId) {
+      clearBaitFlag(resourceId);
+    }
+    if (control) {
+      clearControlFlag();
+    }
+
+    let settled = false;
+
+    const finish = (status: BlockerTestStatus, reason: string) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       cleanup();
-      resolve({ blocked: true, loadTime: null });
+      resolve({
+        blocked: status === 'blocked',
+        status,
+        loadTime: status === 'loaded' ? performance.now() - startTime : null,
+        reason,
+      });
+    };
+
+    const timeoutId = setTimeout(() => {
+      finish(control ? 'inconclusive' : 'blocked', control ? 'control-timeout' : 'timeout');
     }, timeout);
 
     const cleanup = () => {
@@ -180,13 +272,17 @@ async function testScript(url: string, timeout: number = 3000): Promise<{ blocke
     };
 
     script.onload = () => {
-      cleanup();
-      resolve({ blocked: false, loadTime: performance.now() - startTime });
+      const expectedFlagLoaded = control
+        ? hasControlFlag()
+        : resourceId
+        ? hasBaitFlag(resourceId)
+        : true;
+
+      finish(expectedFlagLoaded ? 'loaded' : 'inconclusive', expectedFlagLoaded ? 'loaded' : 'missing-flag');
     };
 
     script.onerror = () => {
-      cleanup();
-      resolve({ blocked: true, loadTime: null });
+      finish(control ? 'inconclusive' : 'blocked', control ? 'control-error' : 'error');
     };
 
     document.head.appendChild(script);
@@ -248,18 +344,32 @@ export async function runBlockerTests(
   baseUrl: string = '',
   timeout: number = 3000
 ): Promise<BlockerAnalysis> {
+  const controlProbe = await testScript(baseUrl + CONTROL_PROBE_URL, {
+    timeout,
+    control: true,
+  });
+
+  if (controlProbe.status !== 'loaded') {
+    return createInconclusiveAnalysis(controlProbe.reason);
+  }
+
   const results: BlockerTestResult[] = [];
 
   // Test each bait resource
   for (const resource of BAIT_RESOURCES) {
     const url = baseUrl + resource.url;
-    const testResult = await testScript(url, timeout);
+    const testResult = await testScript(url, {
+      timeout,
+      resourceId: resource.id,
+    });
 
     results.push({
       resource,
       blocked: testResult.blocked,
+      status: testResult.status,
       loadTime: testResult.loadTime,
       method: 'script',
+      reason: testResult.reason,
     });
   }
 
@@ -270,31 +380,43 @@ export async function runBlockerTests(
 /**
  * Quick blocker detection (faster, fewer tests)
  */
-export async function quickBlockerDetect(): Promise<{
-  detected: boolean;
-  type: 'none' | 'basic' | 'standard' | 'aggressive';
-}> {
+export async function quickBlockerDetect(): Promise<QuickBlockerDetectResult> {
+  const controlProbe = await testScript(CONTROL_PROBE_URL, {
+    timeout: 1000,
+    control: true,
+  });
+
+  if (controlProbe.status !== 'loaded') {
+    return { detected: false, type: 'none', inconclusive: true };
+  }
+
   const tests = [
-    { url: '/bait/ads/ad.js', category: 'ads' },
-    { url: '/bait/analytics/analytics.js', category: 'analytics' },
-    { url: '/bait/social/social.js', category: 'social' },
+    { id: 'quick-ads', url: '/bait/ads/ad.js', category: 'ads' },
+    { id: 'quick-analytics', url: '/bait/analytics/analytics.js', category: 'analytics' },
+    { id: 'quick-social', url: '/bait/social/social.js', category: 'social' },
   ];
 
   let blocked = 0;
 
   for (const test of tests) {
-    const result = await testScript(test.url, 1000);
+    const result = await testScript(test.url, {
+      timeout: 1000,
+      resourceId: test.id,
+    });
+    if (result.status === 'inconclusive') {
+      return { detected: false, type: 'none', inconclusive: true };
+    }
     if (result.blocked) blocked++;
   }
 
   if (blocked === 0) {
-    return { detected: false, type: 'none' };
+    return { detected: false, type: 'none', inconclusive: false };
   } else if (blocked === 1) {
-    return { detected: true, type: 'basic' };
+    return { detected: true, type: 'basic', inconclusive: false };
   } else if (blocked === 2) {
-    return { detected: true, type: 'standard' };
+    return { detected: true, type: 'standard', inconclusive: false };
   } else {
-    return { detected: true, type: 'aggressive' };
+    return { detected: true, type: 'aggressive', inconclusive: false };
   }
 }
 
@@ -303,14 +425,25 @@ export async function quickBlockerDetect(): Promise<{
  */
 function analyzeResults(results: BlockerTestResult[]): BlockerAnalysis {
   // Calculate category scores
-  const categoryScores: Record<string, { blocked: number; total: number; score: number }> = {};
+  const categoryScores: Record<string, BlockerCategoryScore> = {};
 
   for (const result of results) {
     const cat = result.resource.category;
     if (!categoryScores[cat]) {
-      categoryScores[cat] = { blocked: 0, total: 0, score: 0 };
+      categoryScores[cat] = {
+        blocked: 0,
+        total: 0,
+        measured: 0,
+        inconclusive: 0,
+        score: 0,
+      };
     }
     categoryScores[cat].total++;
+    if (result.status === 'inconclusive') {
+      categoryScores[cat].inconclusive++;
+      continue;
+    }
+    categoryScores[cat].measured++;
     if (result.blocked) {
       categoryScores[cat].blocked++;
     }
@@ -318,28 +451,93 @@ function analyzeResults(results: BlockerTestResult[]): BlockerAnalysis {
 
   // Calculate scores for each category
   for (const cat of Object.keys(categoryScores)) {
-    const { blocked, total } = categoryScores[cat];
-    categoryScores[cat].score = Math.round((blocked / total) * 100);
+    const { blocked, measured } = categoryScores[cat];
+    categoryScores[cat].score = measured > 0 ? Math.round((blocked / measured) * 100) : 0;
   }
 
   // Overall effectiveness
-  const totalBlocked = results.filter(r => r.blocked).length;
-  const effectiveness = Math.round((totalBlocked / results.length) * 100);
+  const totalBlocked = results.filter(r => r.status === 'blocked').length;
+  const measuredCount = results.filter(r => r.status !== 'inconclusive').length;
+  const inconclusiveCount = results.length - measuredCount;
+  const effectiveness = measuredCount > 0
+    ? Math.round((totalBlocked / measuredCount) * 100)
+    : 0;
 
   // Try to identify the blocker
-  const { name, version } = identifyBlocker(results, effectiveness);
+  const { name, version } = measuredCount > 0
+    ? identifyBlocker(results, effectiveness)
+    : { name: null, version: null };
 
   // Generate recommendations
-  const recommendations = generateRecommendations(categoryScores, effectiveness);
+  const recommendations = generateRecommendations(
+    categoryScores,
+    effectiveness,
+    inconclusiveCount
+  );
 
   return {
-    detected: effectiveness > 0,
+    detected: measuredCount > 0 && effectiveness > 0,
     name,
     version,
     effectiveness,
     categoryScores,
     results,
     recommendations,
+    inconclusive: measuredCount === 0,
+    measuredCount,
+    inconclusiveCount,
+    message: measuredCount === 0
+      ? 'The control probe did not execute, so the page could not verify its own bait files.'
+      : inconclusiveCount > 0
+      ? `${inconclusiveCount} tracker probe${inconclusiveCount === 1 ? '' : 's'} could not be verified and were excluded from scoring.`
+      : null,
+  };
+}
+
+function createInconclusiveAnalysis(reason: string): BlockerAnalysis {
+  const results: BlockerTestResult[] = BAIT_RESOURCES.map((resource) => ({
+    resource,
+    blocked: false,
+    status: 'inconclusive',
+    loadTime: null,
+    method: 'script',
+    reason: `control-${reason}`,
+  }));
+
+  const categoryScores = BAIT_RESOURCES.reduce<Record<string, BlockerCategoryScore>>(
+    (acc, resource) => {
+      const category = resource.category;
+      if (!acc[category]) {
+        acc[category] = {
+          blocked: 0,
+          total: 0,
+          measured: 0,
+          inconclusive: 0,
+          score: 0,
+        };
+      }
+      acc[category].total++;
+      acc[category].inconclusive++;
+      return acc;
+    },
+    {}
+  );
+
+  return {
+    detected: false,
+    name: null,
+    version: null,
+    effectiveness: 0,
+    categoryScores,
+    results,
+    recommendations: [
+      'This run is inconclusive because the control probe did not execute. That usually means the page could not verify its own bait assets, so treating every failure as "blocked" would be misleading.',
+      'Reload the page and try again. If it still fails, check whether a network policy, CSP override, or extension is blocking first-party /bait/ scripts entirely.',
+    ],
+    inconclusive: true,
+    measuredCount: 0,
+    inconclusiveCount: results.length,
+    message: 'The control probe failed before the blocker checks started, so no protection score was computed.',
   };
 }
 
@@ -355,11 +553,21 @@ function identifyBlocker(
   }
 
   // Check for specific patterns
-  const adBlocked = results.filter(r => r.resource.category === 'advertising' && r.blocked).length;
-  const analyticsBlocked = results.filter(r => r.resource.category === 'analytics' && r.blocked).length;
-  const socialBlocked = results.filter(r => r.resource.category === 'social' && r.blocked).length;
-  const fpBlocked = results.filter(r => r.resource.category === 'fingerprinting' && r.blocked).length;
-  const malwareBlocked = results.filter(r => r.resource.category === 'malware' && r.blocked).length;
+  const adBlocked = results.filter(
+    r => r.resource.category === 'advertising' && r.status === 'blocked'
+  ).length;
+  const analyticsBlocked = results.filter(
+    r => r.resource.category === 'analytics' && r.status === 'blocked'
+  ).length;
+  const socialBlocked = results.filter(
+    r => r.resource.category === 'social' && r.status === 'blocked'
+  ).length;
+  const fpBlocked = results.filter(
+    r => r.resource.category === 'fingerprinting' && r.status === 'blocked'
+  ).length;
+  const malwareBlocked = results.filter(
+    r => r.resource.category === 'malware' && r.status === 'blocked'
+  ).length;
 
   // uBlock Origin typically blocks everything
   if (effectiveness >= 90 && malwareBlocked > 0 && fpBlocked > 0) {
@@ -393,10 +601,17 @@ function identifyBlocker(
  * Generate recommendations based on test results
  */
 function generateRecommendations(
-  categoryScores: Record<string, { blocked: number; total: number; score: number }>,
-  effectiveness: number
+  categoryScores: Record<string, BlockerCategoryScore>,
+  effectiveness: number,
+  inconclusiveCount: number
 ): string[] {
   const recommendations: string[] = [];
+
+  if (inconclusiveCount > 0) {
+    recommendations.push(
+      `${inconclusiveCount} probe${inconclusiveCount === 1 ? '' : 's'} could not be verified and were left out of the score. A fully green "blocked" reading is only trustworthy when the control probe succeeds.`
+    );
+  }
 
   if (effectiveness === 0) {
     recommendations.push(

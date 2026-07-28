@@ -6,6 +6,10 @@ name = "panopticlick-api-dev"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 compatibility_flags = ["nodejs_compat"]
+# A bare dev deploy must never create a second public ingress backed by the
+# production D1/KV bindings below. Production is exposed only by its custom
+# domain in [env.production].
+workers_dev = false
 
 # account_id is intentionally NOT in this file. Pass CLOUDFLARE_ACCOUNT_ID in the
 # environment so a stray global token from another account cannot silently
@@ -46,7 +50,7 @@ TURNSTILE_SECRET = ""
 #   npx wrangler secret put OPENROUTER_API_KEY --env production
 # Or for local dev, create .dev.vars file with:
 #   OPENROUTER_API_KEY=sk-or-v1-your-key-here
-OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+OPENROUTER_MODEL = "openrouter/free"
 
 # IPBot IP intelligence API
 # The API key is a secret — NEVER put it here. Set it with:
@@ -72,7 +76,7 @@ routes = [
 ENVIRONMENT = "production"
 API_VERSION = "v1"
 IPBOT_API_ORIGIN = "https://api.ipbot.com"
-OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+OPENROUTER_MODEL = "openrouter/free"
 # Production CORS allowlist. Without this the middleware falls back to a
 # default list that includes localhost with Allow-Credentials.
 ALLOWED_ORIGINS = "https://panopticlick.org,https://www.panopticlick.org"

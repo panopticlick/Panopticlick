@@ -192,12 +192,14 @@ export default function MethodologyPage() {
 
               <h4>4.2 Practical Calculation</h4>
               <p>
-                For each fingerprint component, we calculate entropy based on observed
-                frequencies in our dataset:
+                For each fingerprint component, we use a research-derived prior
+                probability from the curated reference table described above. The
+                following numbers are an illustrative calculation, not observations
+                from Panopticlick visitors:
               </p>
               <div className="not-prose bg-ink text-paper p-4 rounded-sm font-mono text-sm mb-4">
                 <div className="text-paper-300">// Example: User Agent entropy</div>
-                <div>// 1000 observations, 200 unique values</div>
+                <div>// Illustrative reference population: 1000 observations</div>
                 <div>// Chrome 120 on Windows: 15% of users</div>
                 <div>entropy = -0.15 × log2(0.15) = 0.41 bits</div>
                 <div className="mt-2">// Rare configuration: 0.1% of users</div>
@@ -262,8 +264,10 @@ export default function MethodologyPage() {
                 <li><strong>40 bits</strong> → 1 in 1,099,511,627,776 (one trillion)</li>
               </ul>
               <p>
-                Most browsers achieve 25-45 bits of entropy, making them effectively
-                unique among the global browser population.
+                The current model often produces totals in the 25–45 bit range. That
+                is a modeled output, not proof that a browser is globally unique; the
+                component-independence assumption can overstate the &ldquo;1 in N&rdquo;
+                figure.
               </p>
             </DocumentSection>
 
@@ -287,7 +291,8 @@ export default function MethodologyPage() {
               <h4>6.2 CPM Calculation</h4>
               <p>
                 We simulate bids from fictional DSPs with different targeting criteria.
-                CPM rates are based on industry averages:
+                The following are illustrative base-rate bands used by the simulation,
+                not current bids or market quotes:
               </p>
               <div className="not-prose bg-paper-100 p-4 rounded-sm text-sm mb-4">
                 <div><strong>Finance/Investment:</strong> $8-15 CPM</div>
@@ -349,16 +354,16 @@ export default function MethodologyPage() {
               </p>
               <ul>
                 <li>
-                  <strong>Sample bias</strong>: Users visiting privacy tools may have
-                  different browser configurations than the general population
+                  <strong>Prior-model bias</strong>: Published reference distributions
+                  may not represent today&apos;s full browser population
                 </li>
                 <li>
                   <strong>Temporal changes</strong>: Fingerprints change over time as
                   browsers update and users install/remove software
                 </li>
                 <li>
-                  <strong>Client-side only</strong>: We cannot verify fingerprints
-                  against server-side tracking implementations
+                  <strong>Model boundary</strong>: The local collectors cannot reproduce
+                  every server-side or cross-site tracking implementation
                 </li>
                 <li>
                   <strong>RTB simulation</strong>: Actual advertising prices vary

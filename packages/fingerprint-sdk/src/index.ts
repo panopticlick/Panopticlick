@@ -86,6 +86,8 @@ export {
 
 export type {
   BaitResource,
+  BlockerCategoryScore,
+  BlockerTestStatus,
   BlockerTestResult,
   BlockerAnalysis,
   WebRTCLeakResult,

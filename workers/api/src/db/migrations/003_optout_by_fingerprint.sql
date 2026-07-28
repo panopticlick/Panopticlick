@@ -11,10 +11,9 @@
 
 DROP INDEX IF EXISTS idx_optout_ip;
 
--- Non-unique on purpose: creating a UNIQUE index would fail outright if the
--- table already held two rows for the same fingerprint. The route does an
--- existence check before inserting.
-CREATE INDEX IF NOT EXISTS idx_optout_fp ON opt_outs(fingerprint_hash);
+-- One durable decision per fingerprint. SQLite permits multiple NULL values,
+-- so email-only assistance records are unaffected.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_optout_fp ON opt_outs(fingerprint_hash);
 
 -- Kept for GDPR contact lookups by email.
 CREATE INDEX IF NOT EXISTS idx_optout_email ON opt_outs(email);

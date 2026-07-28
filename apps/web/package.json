@@ -28,6 +28,7 @@
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1",
+    "react-markdown": "10.1.0",
     "tailwind-merge": "^2.3.0"
   },
   "devDependencies": {
