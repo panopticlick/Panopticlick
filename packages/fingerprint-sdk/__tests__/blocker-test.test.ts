@@ -74,9 +74,14 @@ describe('runBlockerTests', () => {
   afterEach(() => {
     restoreDom?.();
     restoreDom = undefined;
+    vi.unstubAllGlobals();
   });
 
   it('marks a bait probe as blocked only after the control probe succeeds', async () => {
+    // GitHub's Node test process has no browser navigator. Analysis must still
+    // return a generic blocker result instead of throwing.
+    vi.stubGlobal('navigator', undefined);
+
     const behaviors: Record<string, ScriptBehavior> = {
       '/bait/control.js': { type: 'load', control: true },
     };

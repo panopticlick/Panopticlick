@@ -582,13 +582,16 @@ function identifyBlocker(
     return { name: 'uBlock Origin', version: null };
   }
 
+  const userAgent =
+    typeof navigator === 'undefined' ? '' : navigator.userAgent;
+
   // Brave has built-in blocking
-  if (navigator.userAgent.includes('Brave') && effectiveness > 50) {
+  if (userAgent.includes('Brave') && effectiveness > 50) {
     return { name: 'Brave Shields', version: null };
   }
 
   // Firefox Enhanced Tracking Protection
-  if (navigator.userAgent.includes('Firefox') && effectiveness > 30 && socialBlocked > 0) {
+  if (userAgent.includes('Firefox') && effectiveness > 30 && socialBlocked > 0) {
     return { name: 'Firefox Enhanced Tracking Protection', version: null };
   }
 
