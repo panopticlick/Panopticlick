@@ -7,11 +7,33 @@ import { Context, Next } from 'hono';
 import type { RequestContext } from '../types';
 
 /**
+ * Per-isolate fallback salt, used only when IP_HASH_SALT is unset. Created
+ * lazily because generating random values in the global scope is a startup
+ * error on Workers.
+ */
+let isolateSalt: string | undefined;
+let warnedMissingSalt = false;
+
+function resolveSalt(env: { IP_HASH_SALT?: string } | undefined): string {
+  if (env?.IP_HASH_SALT) return env.IP_HASH_SALT;
+
+  if (!warnedMissingSalt) {
+    warnedMissingSalt = true;
+    console.warn(
+      '[context] IP_HASH_SALT is not configured; falling back to a per-isolate random salt (hashes are unlinkable but unstable)'
+    );
+  }
+
+  if (!isolateSalt) isolateSalt = crypto.randomUUID();
+  return isolateSalt;
+}
+
+/**
  * Generate SHA-256 hash of IP address
  */
-async function hashIP(ip: string): Promise<string> {
+async function hashIP(ip: string, salt: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(ip + 'panopticlick-salt');
+  const data = encoder.encode(ip + salt);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -62,8 +84,10 @@ function detectNetworkType(cf: IncomingRequestCfProperties | CfProperties<unknow
   const isDatacenter = datacenterKeywords.some(kw => asOrg.includes(kw));
   const isVPN = vpnKeywords.some(kw => asOrg.includes(kw));
 
-  // Tor exit nodes typically have specific AS patterns
-  const isTor = asOrg.includes('tor') || asOrg.includes('exit');
+  // Tor exit nodes typically have specific AS patterns. The word boundary
+  // keeps "Torino Telecom" / "Storage Networks" out; "exit" alone is far too
+  // generic to be evidence of anything.
+  const isTor = /\btor\b/.test(asOrg) || asOrg.includes('torproject');
 
   return {
     isProxy: isDatacenter || isVPN,
@@ -85,7 +109,7 @@ export async function contextMiddleware(c: Context, next: Next) {
     '0.0.0.0';
 
   // Hash the IP for privacy
-  const ipHash = await hashIP(ip);
+  const ipHash = await hashIP(ip, resolveSalt(c.env as { IP_HASH_SALT?: string } | undefined));
 
   // Extract geo info from Cloudflare
   const country = (cf?.country as string) || 'Unknown';

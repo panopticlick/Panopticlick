@@ -43,3 +43,6 @@ SECRETS-TO-ADD.md
 
 # Agent working artifacts
 .codex-results/
+
+# TypeScript incremental build info
+*.tsbuildinfo

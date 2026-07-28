@@ -7,9 +7,14 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
 import {
+  authorizeSession,
+  sessionAuthError,
+  verifySessionToken,
+} from '../services/session-token';
+import {
   PrivacyOptOutSchema,
   PrivacyConsentSchema,
-  PrivacyExportSchema,
+  PrivacyMyDataSchema,
   validateRequest,
 } from '../schemas/validation';
 import type {
@@ -21,74 +26,121 @@ import type {
 
 const privacy = new Hono<{ Bindings: Env }>();
 
+/** `permanentOptOut` is additive; not yet in the shared types contract. */
+type OptOutResponseWithFlag = OptOutResponse & { permanentOptOut: boolean };
+
+/**
+ * Aggregate-only variant of MyDataResponse, returned when the caller cannot
+ * name the fingerprint they are asking about.
+ */
+interface MyDataAggregateResponse {
+  success: true;
+  data: {
+    sessionCount: number;
+    fingerprintCount: number;
+    exportedAt: string;
+    note: string;
+  };
+}
+
 /**
  * POST /privacy/opt-out
- * Request data deletion
+ * Request data deletion. Every session must be presented with the token minted
+ * for it at /v1/scan/start — a bare session id is not proof of ownership.
  */
 privacy.post('/opt-out', async (c) => {
   try {
-    const body = await c.req.json();
+    const body = await c.req.json().catch(() => null);
+    if (!body) {
+      return c.json({ success: false, error: 'Request body must be JSON' }, 400);
+    }
+
     const validation = validateRequest(PrivacyOptOutSchema, body);
 
     if (!validation.success) {
       return c.json({ success: false, error: validation.error }, 400);
     }
 
-    const { sessionIds, fingerprintHash, email, reason } = validation.data;
+    const { sessions, fingerprintHash, email, reason } = validation.data;
+
+    const secret = c.env.SESSION_TOKEN_SECRET;
+    if (!secret) {
+      return c.json(sessionAuthError({ ok: false, reason: 'unconfigured' }), 401);
+    }
 
     const ctx = getRequestContext(c);
     const deletedCount = { sessions: 0, fingerprints: 0 };
 
-    // Delete by session IDs
-    if (sessionIds && sessionIds.length > 0) {
-      for (const sessionId of sessionIds) {
-        const result = await c.env.DB.prepare(
-          'DELETE FROM sessions WHERE id = ?'
-        )
-          .bind(sessionId)
-          .run();
-
-        if (result.meta.changes) {
-          deletedCount.sessions += result.meta.changes;
-        }
+    // Verify ownership of every submitted session before deleting anything.
+    const verified: string[] = [];
+    for (const session of sessions) {
+      if (await verifySessionToken(session.id, session.token, secret)) {
+        verified.push(session.id);
       }
     }
 
-    // Delete by fingerprint hash
+    if (verified.length === 0) {
+      return c.json(sessionAuthError({ ok: false, reason: 'invalid' }), 401);
+    }
+
+    // Fingerprint hashes proven to belong to the caller. Needed before the
+    // delete, because the session row is what links id to hash.
+    const ownedHashes = new Set<string>();
+
+    for (const sessionId of verified) {
+      const row = await c.env.DB.prepare(
+        'SELECT fingerprint_hash FROM sessions WHERE id = ?'
+      )
+        .bind(sessionId)
+        .first<{ fingerprint_hash: string | null }>();
+
+      if (row?.fingerprint_hash) ownedHashes.add(row.fingerprint_hash);
+
+      const result = await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?')
+        .bind(sessionId)
+        .run();
+
+      deletedCount.sessions += result.meta.changes ?? 0;
+    }
+
+    // A fingerprint hash is handed to the client in every /collect response, so
+    // on its own it proves nothing: accept it only when one of the verified
+    // sessions actually carries it.
+    if (fingerprintHash && !ownedHashes.has(fingerprintHash)) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message:
+              'fingerprintHash does not belong to any of the verified sessions in this request',
+          },
+        },
+        403
+      );
+    }
+
     if (fingerprintHash) {
-      // Delete sessions with this fingerprint
+      // Explicit hash erasure: removes this fingerprint's history across all
+      // sessions, not just the ones named above.
       const sessionResult = await c.env.DB.prepare(
         'DELETE FROM sessions WHERE fingerprint_hash = ?'
       )
         .bind(fingerprintHash)
         .run();
 
-      if (sessionResult.meta.changes) {
-        deletedCount.sessions += sessionResult.meta.changes;
-      }
+      deletedCount.sessions += sessionResult.meta.changes ?? 0;
 
-      // Delete fingerprint record
-      const fpResult = await c.env.DB.prepare(
-        'DELETE FROM fingerprints WHERE hash = ?'
-      )
+      const fpResult = await c.env.DB.prepare('DELETE FROM fingerprints WHERE hash = ?')
         .bind(fingerprintHash)
         .run();
 
-      if (fpResult.meta.changes) {
-        deletedCount.fingerprints += fpResult.meta.changes;
-      }
+      deletedCount.fingerprints += fpResult.meta.changes ?? 0;
     }
 
-    // Delete by IP hash (current request)
-    const ipResult = await c.env.DB.prepare(
-      'DELETE FROM sessions WHERE ip_hash = ?'
-    )
-      .bind(ctx.ipHash)
-      .run();
-
-    if (ipResult.meta.changes) {
-      deletedCount.sessions += ipResult.meta.changes;
-    }
+    // Note: there is deliberately no `DELETE ... WHERE ip_hash = ?` here.
+    // Behind CGNAT one ip_hash covers thousands of unrelated people, so the
+    // old unconditional IP-wide delete let any caller wipe their neighbours.
 
     // Log opt-out request (without PII)
     c.env.ANALYTICS?.writeDataPoint({
@@ -97,20 +149,44 @@ privacy.post('/opt-out', async (c) => {
       indexes: ['privacy_optout'],
     });
 
-    // Record permanent opt-out (new table - GDPR compliance)
-    const optOutId = crypto.randomUUID();
-    await c.env.DB.prepare(`
-      INSERT OR REPLACE INTO opt_outs (id, ip_hash, fingerprint_hash, email, reason, opted_out_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `)
-      .bind(optOutId, ctx.ipHash, fingerprintHash || null, email || null, reason || null)
-      .run();
+    // Record a permanent opt-out only for an explicitly named (and owned)
+    // fingerprint: that hash is what /scan/collect checks before persisting.
+    // Doing it implicitly for every session would let a common configuration
+    // hash be suppressed for unrelated visitors who share it.
+    let permanentOptOut = false;
 
-    const response: OptOutResponse = {
+    if (fingerprintHash || email) {
+      const existing = fingerprintHash
+        ? await c.env.DB.prepare('SELECT id FROM opt_outs WHERE fingerprint_hash = ?')
+            .bind(fingerprintHash)
+            .first()
+        : null;
+
+      if (!existing) {
+        await c.env.DB.prepare(
+          `INSERT INTO opt_outs (id, ip_hash, fingerprint_hash, email, reason, opted_out_at)
+           VALUES (?, ?, ?, ?, ?, datetime('now'))`
+        )
+          .bind(
+            crypto.randomUUID(),
+            ctx.ipHash,
+            fingerprintHash || null,
+            email || null,
+            reason || null
+          )
+          .run();
+      }
+
+      permanentOptOut = Boolean(fingerprintHash);
+    }
+
+    const response: OptOutResponseWithFlag = {
       success: true,
       deletedCount,
-      message:
-        'Your data has been deleted. Any future scans will not be linked to previous sessions.',
+      permanentOptOut,
+      message: permanentOptOut
+        ? 'Your data has been deleted and this fingerprint is now permanently excluded from collection.'
+        : 'The sessions you proved ownership of have been deleted. Send your fingerprintHash to also block future collection.',
     };
 
     return c.json(response);
@@ -125,13 +201,51 @@ privacy.post('/opt-out', async (c) => {
 
 /**
  * GET /privacy/my-data
- * Request data export (GDPR Article 20)
+ * Request data export (GDPR Article 20).
+ *
+ * Records are only returned for a named fingerprint hash. An ip_hash alone is
+ * shared by every visitor behind the same NAT, so returning its rows would
+ * hand out the neighbours' session ids and fingerprint hashes.
  */
 privacy.get('/my-data', async (c) => {
   const ctx = getRequestContext(c);
 
   try {
-    // Get all sessions for this IP
+    const validation = validateRequest(PrivacyMyDataSchema, {
+      fingerprintHash: c.req.query('fingerprintHash') || undefined,
+    });
+
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
+    }
+
+    const { fingerprintHash } = validation.data;
+
+    if (!fingerprintHash) {
+      const counts = await c.env.DB.prepare(
+        `SELECT
+          COUNT(*) AS session_count,
+          COUNT(DISTINCT fingerprint_hash) AS fingerprint_count
+         FROM sessions
+         WHERE ip_hash = ?`
+      )
+        .bind(ctx.ipHash)
+        .first<{ session_count: number; fingerprint_count: number }>();
+
+      const aggregate: MyDataAggregateResponse = {
+        success: true,
+        data: {
+          sessionCount: counts?.session_count ?? 0,
+          fingerprintCount: counts?.fingerprint_count ?? 0,
+          exportedAt: new Date().toISOString(),
+          note:
+            'Counts for your current IP address only. Records are shared by everyone behind the same network address, so add ?fingerprintHash=<hash from your scan report> to export the rows that are yours.',
+        },
+      };
+
+      return c.json(aggregate);
+    }
+
     const sessions = await c.env.DB.prepare(
       `SELECT
         id,
@@ -141,38 +255,31 @@ privacy.get('/my-data', async (c) => {
         created_at,
         consent_given
       FROM sessions
-      WHERE ip_hash = ?
+      WHERE ip_hash = ? AND fingerprint_hash = ?
       ORDER BY created_at DESC
       LIMIT 100`
     )
-      .bind(ctx.ipHash)
+      .bind(ctx.ipHash, fingerprintHash)
       .all();
 
-    // Get related fingerprints - FIXED: Use single IN query instead of N+1
     const fingerprints: Record<string, unknown>[] = [];
 
     if (sessions.results && sessions.results.length > 0) {
-      const hashes = [...new Set(sessions.results.map((s) => s.fingerprint_hash))].filter(Boolean);
+      const fpResults = await c.env.DB.prepare(
+        `SELECT
+          hash,
+          entropy_bits,
+          first_seen,
+          last_seen,
+          times_seen
+        FROM fingerprints
+        WHERE hash = ?`
+      )
+        .bind(fingerprintHash)
+        .all();
 
-      if (hashes.length > 0) {
-        // Build parameterized query with IN clause
-        const placeholders = hashes.map(() => '?').join(',');
-        const fpResults = await c.env.DB.prepare(
-          `SELECT
-            hash,
-            entropy_bits,
-            first_seen,
-            last_seen,
-            times_seen
-          FROM fingerprints
-          WHERE hash IN (${placeholders})`
-        )
-          .bind(...hashes)
-          .all();
-
-        if (fpResults.results) {
-          fingerprints.push(...fpResults.results);
-        }
+      if (fpResults.results) {
+        fingerprints.push(...fpResults.results);
       }
     }
 
@@ -183,7 +290,7 @@ privacy.get('/my-data', async (c) => {
         fingerprints,
         exportedAt: new Date().toISOString(),
         note:
-          'This export contains all data associated with your current IP address. ' +
+          'This export contains the data recorded for this fingerprint on your current IP address. ' +
           'IP addresses are hashed and cannot be reversed.',
       },
     };
@@ -243,6 +350,12 @@ privacy.post('/export/:sessionId', async (c) => {
   try {
     const sessionId = c.req.param('sessionId');
 
+    // Ownership required: the export contains the session's fingerprint record.
+    const auth = await authorizeSession(c, sessionId);
+    if (!auth.ok) {
+      return c.json(sessionAuthError(auth), 401);
+    }
+
     const session = await c.env.DB.prepare(
       `SELECT id, fingerprint_hash, entropy_bits, country, created_at
        FROM sessions WHERE id = ?`
@@ -287,14 +400,25 @@ privacy.post('/export/:sessionId', async (c) => {
  * Record consent preference
  */
 privacy.post('/consent', async (c) => {
-  const body = await c.req.json();
+  const body = await c.req.json().catch(() => null);
+  if (!body) {
+    return c.json({ success: false, error: 'Request body must be JSON' }, 400);
+  }
+
   const validation = validateRequest(PrivacyConsentSchema, body);
 
   if (!validation.success) {
     return c.json({ success: false, error: validation.error }, 400);
   }
 
-  const { sessionId, consent } = validation.data;
+  const { sessionId, consent, token } = validation.data;
+
+  // Consent withdrawal deletes the session, so it needs the same proof as
+  // /opt-out. Accepts X-Session-Token or a `token` field in the body.
+  const auth = await authorizeSession(c, sessionId, token);
+  if (!auth.ok) {
+    return c.json(sessionAuthError(auth), 401);
+  }
 
   await c.env.DB.prepare(
     'UPDATE sessions SET consent_given = ? WHERE id = ?'

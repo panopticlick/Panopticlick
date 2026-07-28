@@ -6,7 +6,12 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
-import { DefenseBlockerSchema, DefenseTestSchema, validateRequest } from '../schemas/validation';
+import {
+  DefenseBlockerSchema,
+  DefenseTestSchema,
+  DefenseRecommendationsSchema,
+  validateRequest,
+} from '../schemas/validation';
 import type {
   FingerprintPayload,
   DefenseBlockerRequest,
@@ -160,25 +165,27 @@ defense.post('/test', async (c) => {
  */
 defense.post('/recommendations', async (c) => {
   try {
-    const body = await c.req.json<{ fingerprint: any }>();
-    const { fingerprint } = body;
+    const body = await c.req.json().catch(() => null);
+    const validation = validateRequest(DefenseRecommendationsSchema, body);
 
-    if (!fingerprint) {
-      return c.json({ success: false, error: 'Missing fingerprint' }, 400);
+    if (!validation.success) {
+      return c.json({ success: false, error: validation.error }, 400);
     }
+
+    const { fingerprint } = validation.data;
 
     const { analyzeDefenses, generateHardeningGuide } = await import(
       '@panopticlick/valuation-engine'
     );
 
-    const status = analyzeDefenses(fingerprint, {
+    const status = analyzeDefenses(fingerprint as FingerprintPayload, {
       adBlockerDetected: false,
       trackerBlocked: false,
       vpnDetected: false,
       torDetected: false,
     });
 
-    const guide = generateHardeningGuide(fingerprint);
+    const guide = generateHardeningGuide(fingerprint as FingerprintPayload);
 
     const response: DefenseRecommendationsResponse = {
       success: true,

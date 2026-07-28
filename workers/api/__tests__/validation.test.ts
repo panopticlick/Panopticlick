@@ -279,33 +279,48 @@ describe('DefenseTestSchema', () => {
 });
 
 describe('PrivacyOptOutSchema', () => {
-  it('should accept sessionIds', () => {
+  // Deletion requires proof of ownership: every session is submitted as an
+  // {id, token} pair, where the token was minted for that id at /scan/start.
+  // A bare session id or fingerprint hash used to be enough, which let anyone
+  // delete anyone's data (the hash is handed to the client in every /collect
+  // response).
+  it('should accept sessions with their tokens', () => {
     const result = PrivacyOptOutSchema.safeParse({
-      sessionIds: ['ses_123', 'ses_456'],
+      sessions: [
+        { id: 'ses_123', token: 'a'.repeat(64) },
+        { id: 'ses_456', token: 'b'.repeat(64) },
+      ],
     });
     expect(result.success).toBe(true);
   });
 
-  it('should accept fingerprintHash', () => {
+  it('should reject a session id without its token', () => {
+    const result = PrivacyOptOutSchema.safeParse({
+      sessions: [{ id: 'ses_123' }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject a bare fingerprintHash with no proven session', () => {
     const result = PrivacyOptOutSchema.safeParse({
       fingerprintHash: 'abc123def456',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
-  it('should accept email', () => {
+  it('should reject an email with no proven session', () => {
     const result = PrivacyOptOutSchema.safeParse({
       email: 'user@example.com',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
-  it('should require at least one identifier', () => {
+  it('should require at least one session', () => {
     const result = PrivacyOptOutSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 
-  it('should require at least one identifier even with reason', () => {
+  it('should require a session even with reason', () => {
     const result = PrivacyOptOutSchema.safeParse({
       reason: 'Privacy concerns',
     });
@@ -314,7 +329,7 @@ describe('PrivacyOptOutSchema', () => {
 
   it('should accept optional reason', () => {
     const result = PrivacyOptOutSchema.safeParse({
-      sessionIds: ['ses_123'],
+      sessions: [{ id: 'ses_123', token: 'a'.repeat(64) }],
       reason: 'Privacy concerns',
     });
     expect(result.success).toBe(true);
@@ -322,14 +337,25 @@ describe('PrivacyOptOutSchema', () => {
 
   it('should validate email format', () => {
     const result = PrivacyOptOutSchema.safeParse({
+      sessions: [{ id: 'ses_123', token: 'a'.repeat(64) }],
       email: 'not-an-email',
     });
     expect(result.success).toBe(false);
   });
 
-  it('should accept multiple identifiers', () => {
+  it('should cap the number of sessions per request', () => {
     const result = PrivacyOptOutSchema.safeParse({
-      sessionIds: ['ses_123'],
+      sessions: Array.from({ length: 21 }, (_, i) => ({
+        id: `ses_${i}`,
+        token: 'a'.repeat(64),
+      })),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept a proven session plus optional identifiers', () => {
+    const result = PrivacyOptOutSchema.safeParse({
+      sessions: [{ id: 'ses_123', token: 'a'.repeat(64) }],
       fingerprintHash: 'abc123',
       email: 'user@example.com',
       reason: 'GDPR request',
@@ -395,13 +421,24 @@ describe('PrivacyMyDataSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept optional ipHash', () => {
+  it('should accept optional fingerprintHash', () => {
     const result = PrivacyMyDataSchema.safeParse({
-      ipHash: 'abc123def456',
+      fingerprintHash: 'abc123def456',
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.ipHash).toBe('abc123def456');
+      expect(result.data.fingerprintHash).toBe('abc123def456');
+    }
+  });
+
+  // ipHash is deliberately not an accepted lookup key: behind CGNAT one hash
+  // covers thousands of unrelated visitors, so exporting its rows would hand
+  // out the neighbours' session ids and fingerprint hashes.
+  it('should ignore ipHash instead of using it as a lookup key', () => {
+    const result = PrivacyMyDataSchema.safeParse({ ipHash: 'abc123def456' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect('ipHash' in result.data).toBe(false);
     }
   });
 });

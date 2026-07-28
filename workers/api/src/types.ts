@@ -2,6 +2,14 @@
  * Cloudflare Worker Types
  */
 
+/**
+ * Workers Rate Limiting binding (`unsafe.bindings`, type "ratelimit").
+ * Not covered by @cloudflare/workers-types yet, so declare the slice we use.
+ */
+export interface RateLimitBinding {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
 export interface Env {
   // D1 Database
   DB: D1Database;
@@ -13,11 +21,23 @@ export interface Env {
   // Optional: absent when the binding is not configured; all call sites must use `?.`
   ANALYTICS?: AnalyticsEngineDataset;
 
+  // Rate limiting: global (/v1/*) and AI-specific (/v1/ai/*).
+  // Optional: absent in local dev and tests, where requests are allowed through.
+  RATE_LIMITER?: RateLimitBinding;
+  AI_RATE_LIMITER?: RateLimitBinding;
+
   // Environment variables
   ENVIRONMENT: string;
   API_VERSION: string;
   ALLOWED_ORIGINS?: string; // comma separated
   TURNSTILE_SECRET?: string;
+
+  // Salt for IP hashing (secret). Missing salt degrades to a per-isolate random
+  // salt so hashes stay unlinkable instead of rainbow-tableable.
+  IP_HASH_SALT?: string;
+
+  // HMAC key for stateless session ownership tokens (secret)
+  SESSION_TOKEN_SECRET?: string;
 
   // AI Chat (OpenRouter)
   OPENROUTER_API_KEY?: string;

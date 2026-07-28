@@ -110,8 +110,9 @@ type = "ratelimit"
 namespace_id = "1002"
 simple = { limit = 10, period = 60 }
 
-# Cron triggers for data retention + stats rollup.
-# Enabled together with the `scheduled` handler in src/index.ts — leaving a
-# cron pointed at a missing handler makes every trigger fail silently.
-# [triggers]
-# crons = ["0 */6 * * *"]
+# Cron trigger for data retention (sessions 30d, fingerprints 90d,
+# hsts_cookies 7d), matching the `scheduled` handler in src/index.ts.
+# Production only: the dev worker shares the same D1 database, so a second
+# trigger would just duplicate the same deletes.
+[env.production.triggers]
+crons = ["0 3 * * *"]

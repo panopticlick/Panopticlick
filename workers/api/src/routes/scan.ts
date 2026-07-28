@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import type { Env } from '../types';
 import { getRequestContext } from '../middleware/context';
 import { lookupIP } from '../services/ipbot';
+import { authorizeSession, mintSessionToken, sessionAuthError } from '../services/session-token';
 import { ScanStartSchema, ScanCollectSchema, validateRequest } from '../schemas/validation';
 import type {
   FingerprintPayload,
@@ -15,6 +16,13 @@ import type {
   ScanCollectResponse,
   NetworkIntelligence,
 } from '@panopticlick/types';
+
+/**
+ * `sessionToken` is not yet part of the shared ScanStartResponse contract in
+ * @panopticlick/types; the field is additive and optional so the current
+ * frontend keeps working until it starts storing the token.
+ */
+type ScanStartResponseWithToken = ScanStartResponse & { sessionToken?: string };
 
 const scan = new Hono<{ Bindings: Env }>();
 
@@ -82,11 +90,20 @@ scan.post('/start', async (c) => {
     riskScore: ipbot?.score?.risk_score ?? calculateRiskScore(ctx),
   };
 
-  const response: ScanStartResponse = {
+  // Ownership token for the session-scoped endpoints (status, export, consent,
+  // opt-out). Absent when SESSION_TOKEN_SECRET is unset — those endpoints then
+  // refuse every caller rather than trusting a bare session id.
+  const tokenSecret = c.env.SESSION_TOKEN_SECRET;
+  const sessionToken = tokenSecret
+    ? await mintSessionToken(sessionId, tokenSecret)
+    : undefined;
+
+  const response: ScanStartResponseWithToken = {
     success: true,
     sessionId,
     network,
     timestamp: Date.now(),
+    ...(sessionToken ? { sessionToken } : {}),
   };
 
   // Log to analytics
@@ -139,8 +156,16 @@ scan.post('/collect', async (c) => {
     const isProxy = ipbot?.classification?.is_proxy ?? ctx.isProxy;
     const isVPN = ipbot?.classification?.is_vpn ?? ctx.isVPN;
 
+    // A recorded opt-out is permanent: the report is still returned to the
+    // caller, but nothing about this fingerprint is written back to D1.
+    const optedOut = await c.env.DB.prepare(
+      'SELECT 1 FROM opt_outs WHERE fingerprint_hash = ?'
+    )
+      .bind(hashes.fullHash)
+      .first();
+
     // Store session if consent given
-    if (consent) {
+    if (consent && !optedOut) {
       await storeSession(c.env.DB, {
         sessionId,
         fingerprintHash: hashes.fullHash,
@@ -230,6 +255,12 @@ scan.post('/collect', async (c) => {
  */
 scan.get('/status/:sessionId', async (c) => {
   const sessionId = c.req.param('sessionId');
+
+  // Without ownership proof this endpoint is a session-id oracle.
+  const auth = await authorizeSession(c, sessionId);
+  if (!auth.ok) {
+    return c.json(sessionAuthError(auth), 401);
+  }
 
   // Check if session exists in DB
   const result = await c.env.DB.prepare(

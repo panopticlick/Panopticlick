@@ -113,30 +113,50 @@ export const DefenseTestSchema = z.object({
   blockerResults: z.any().optional(),
 });
 
+// POST /v1/defense/recommendations
+export const DefenseRecommendationsSchema = z.object({
+  fingerprint: z.object({
+    hardware: z.any(),
+    software: z.any(),
+    capabilities: z.any().optional(),
+    network: z.any().optional(),
+  }),
+});
+
 /**
  * Privacy Endpoints
  */
 
 // POST /v1/privacy/opt-out
+// Deletion requires proof of ownership: every session is submitted with the
+// token minted for it at /v1/scan/start. A bare list of session ids let anyone
+// delete anyone else's data.
 export const PrivacyOptOutSchema = z.object({
-  sessionIds: z.array(z.string()).optional(),
+  sessions: z
+    .array(
+      z.object({
+        id: z.string().min(1, 'Session ID is required'),
+        token: z.string().min(1, 'Session token is required'),
+      })
+    )
+    .min(1, 'At least one session with its token is required')
+    .max(20, 'At most 20 sessions per request'),
   fingerprintHash: z.string().optional(),
   email: z.string().email().optional(),
   reason: z.string().optional(),
-}).refine(
-  (data) => data.sessionIds || data.fingerprintHash || data.email,
-  { message: 'At least one of sessionIds, fingerprintHash, or email is required' }
-);
+});
 
 // POST /v1/privacy/consent
 export const PrivacyConsentSchema = z.object({
   sessionId: z.string().min(1, 'Session ID is required'),
   consent: z.boolean(),
+  // Optional here because X-Session-Token is the primary carrier
+  token: z.string().min(1).optional(),
 });
 
 // GET /v1/privacy/my-data (query params)
 export const PrivacyMyDataSchema = z.object({
-  ipHash: z.string().optional(),
+  fingerprintHash: z.string().optional(),
 });
 
 // POST /v1/privacy/export/:sessionId (path param)

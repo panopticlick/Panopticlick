@@ -2,7 +2,9 @@
  * AI Chat Route - Secure OpenRouter API Proxy
  *
  * Security: API key is stored in Cloudflare Worker environment variables,
- * never exposed to the client. Rate limiting applied per IP.
+ * never exposed to the client. Rate limiting is enforced by the AI_RATE_LIMITER
+ * binding wired in src/index.ts (the in-memory Map this route used to keep was
+ * per-isolate, so it limited almost nothing).
  */
 
 import { Hono } from 'hono';
@@ -11,77 +13,70 @@ import type { Env } from '../types';
 
 const ai = new Hono<{ Bindings: Env }>();
 
-// Request validation schema
-const chatRequestSchema = z.object({
-  prompt: z.string().min(1).max(1000),
-  fingerprintContext: z.object({
-    entropy: z.number().optional(),
-    uniqueness: z.string().optional(),
-    trackers: z.number().optional(),
-  }).optional(),
+const fingerprintContextSchema = z.object({
+  entropy: z.number().optional(),
+  uniqueness: z.string().optional(),
+  trackers: z.number().optional(),
 });
 
-// Rate limiting: 10 requests per minute per IP
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX = 10;
+type FingerprintContext = z.infer<typeof fingerprintContextSchema>;
 
-// In-memory rate limit store (will be reset on worker restart)
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1).max(2000),
+});
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimitStore.get(ip);
+type ChatMessage = z.infer<typeof chatMessageSchema>;
 
-  if (!record || now > record.resetAt) {
-    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
+// `messages` carries a multi-turn conversation; `prompt` is the single-turn
+// form the current frontend sends and stays supported.
+const chatRequestSchema = z
+  .object({
+    prompt: z.string().min(1).max(1000).optional(),
+    messages: z.array(chatMessageSchema).min(1).max(20).optional(),
+    fingerprintContext: fingerprintContextSchema.optional(),
+  })
+  .refine((data) => Boolean(data.messages?.length || data.prompt), {
+    message: 'Either messages or prompt is required',
+  });
 
-  if (record.count >= RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  record.count++;
-  return true;
-}
+const DEFAULT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
 
 /**
  * POST /api/ai/chat
  * Proxy to OpenRouter API with security
  */
 ai.post('/chat', async (c) => {
+  // Parsed once, up front: the error path below reuses this instead of reading
+  // the (already consumed) request body a second time.
+  const body = await c.req.json().catch(() => null);
+
+  if (body === null || typeof body !== 'object') {
+    return c.json({ success: false, error: 'Request body must be a JSON object' }, 400);
+  }
+
+  const result = chatRequestSchema.safeParse(body);
+
+  if (!result.success) {
+    return c.json(
+      {
+        success: false,
+        error: 'Invalid request format',
+        details: result.error.flatten(),
+      },
+      400
+    );
+  }
+
+  const { prompt, messages, fingerprintContext } = result.data;
+  const conversation: ChatMessage[] = messages ?? [
+    { role: 'user', content: prompt as string },
+  ];
+  const lastUserMessage =
+    [...conversation].reverse().find((m) => m.role === 'user')?.content ??
+    conversation[conversation.length - 1].content;
+
   try {
-    // Get client IP for rate limiting
-    const clientIP = c.req.header('cf-connecting-ip') || 'unknown';
-
-    // Check rate limit
-    if (!checkRateLimit(clientIP)) {
-      return c.json(
-        {
-          success: false,
-          error: 'Rate limit exceeded. Please try again in a minute.',
-        },
-        429
-      );
-    }
-
-    // Validate request body
-    const body = await c.req.json();
-    const result = chatRequestSchema.safeParse(body);
-
-    if (!result.success) {
-      return c.json(
-        {
-          success: false,
-          error: 'Invalid request format',
-          details: result.error.flatten(),
-        },
-        400
-      );
-    }
-
-    const { prompt, fingerprintContext } = result.data;
-
     // Get OpenRouter API key from environment
     const apiKey = c.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -91,14 +86,14 @@ ai.post('/chat', async (c) => {
         message: {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: buildFallbackResponse(prompt, fingerprintContext),
+          content: buildFallbackResponse(lastUserMessage, fingerprintContext),
         },
         meta: { fallback: true },
       });
     }
 
     // Call OpenRouter API
-    const model = c.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free';
+    const model = c.env.OPENROUTER_MODEL || DEFAULT_MODEL;
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -114,10 +109,7 @@ ai.post('/chat', async (c) => {
             role: 'system',
             content: buildSystemPrompt(),
           },
-          {
-            role: 'user',
-            content: buildUserPrompt(prompt, fingerprintContext),
-          },
+          ...withFingerprintContext(conversation, fingerprintContext),
         ],
         temperature: 0.7,
         max_tokens: 500,
@@ -133,7 +125,7 @@ ai.post('/chat', async (c) => {
     };
     const content =
       data.choices?.[0]?.message?.content ||
-      buildFallbackResponse(prompt, fingerprintContext);
+      buildFallbackResponse(lastUserMessage, fingerprintContext);
 
     return c.json({
       success: true,
@@ -147,18 +139,44 @@ ai.post('/chat', async (c) => {
     console.error('[AI Chat Error]', error);
 
     // Return fallback response on error
-    const body = await c.req.json();
     return c.json({
       success: true,
       message: {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: buildFallbackResponse(body.prompt, body.fingerprintContext),
+        content: buildFallbackResponse(lastUserMessage, fingerprintContext),
       },
       meta: { fallback: true },
     });
   }
 });
+
+/**
+ * Attach the fingerprint context to the final user turn only — repeating it on
+ * every turn wastes tokens and confuses the model.
+ */
+function withFingerprintContext(
+  conversation: ChatMessage[],
+  context?: FingerprintContext
+): ChatMessage[] {
+  if (!context) return conversation;
+
+  let lastUserIndex = -1;
+  for (let i = conversation.length - 1; i >= 0; i--) {
+    if (conversation[i].role === 'user') {
+      lastUserIndex = i;
+      break;
+    }
+  }
+
+  if (lastUserIndex === -1) return conversation;
+
+  return conversation.map((message, index) =>
+    index === lastUserIndex
+      ? { ...message, content: buildUserPrompt(message.content, context) }
+      : message
+  );
+}
 
 function buildSystemPrompt(): string {
   return `You are a browser fingerprinting expert assistant for Panopticlick.org, helping users understand their digital privacy and fingerprint analysis.

@@ -4,23 +4,28 @@
  */
 
 import { Hono } from 'hono';
-import { logger } from 'hono/logger';
 import { timing } from 'hono/timing';
 import { secureHeaders } from 'hono/secure-headers';
 
 import type { Env } from './types';
-import { corsMiddleware, contextMiddleware } from './middleware';
+import { corsMiddleware, contextMiddleware, rateLimit, accessLog } from './middleware';
 import { scan, rtb, defense, stats, privacy, ai } from './routes';
+import { runRetention } from './services/retention';
 
 // Create main app
 const app = new Hono<{ Bindings: Env }>();
 
 // Global middleware
 app.use('*', timing());
-app.use('*', logger());
+app.use('*', accessLog);
 app.use('*', secureHeaders());
 app.use('*', corsMiddleware);
 app.use('*', contextMiddleware);
+
+// Rate limiting must run after contextMiddleware: the limiter keys on the
+// hashed IP, which only exists once the context is built.
+app.use('/v1/*', rateLimit('RATE_LIMITER'));
+app.use('/v1/ai/*', rateLimit('AI_RATE_LIMITER'));
 
 // Health check
 app.get('/', (c) => {
@@ -89,8 +94,24 @@ app.onError((err, c) => {
   );
 });
 
+/**
+ * Cron handler — retention enforcement.
+ * Scheduled by [env.production.triggers] in wrangler.toml.
+ */
+export async function scheduled(
+  _controller: ScheduledController,
+  env: Env,
+  _ctx: ExecutionContext
+): Promise<void> {
+  const deleted = await runRetention(env.DB);
+  console.log(`[retention] deleted ${JSON.stringify(deleted)}`);
+}
+
 // Export for Cloudflare Workers
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled,
+};
 
 // Also export for testing
 export { app };

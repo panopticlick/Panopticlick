@@ -28,6 +28,12 @@ export interface ScanStartRequest {
 export interface ScanStartResponse {
   success: boolean;
   sessionId: string;
+  /**
+   * Bearer token proving ownership of `sessionId`. Clients must replay it in the
+   * `X-Session-Token` header on session-scoped endpoints (scan status, privacy
+   * export/consent/opt-out). Absent when the API has no token secret configured.
+   */
+  sessionToken?: string;
   consentRecorded?: boolean;
   timestamp?: number;
   network?: NetworkIntelligence;
