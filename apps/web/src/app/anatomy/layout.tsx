@@ -18,12 +18,25 @@ export const metadata: Metadata = {
     title: 'How Online Tracking Works - Anatomy of Browser Surveillance',
     description:
       'Learn exactly how websites track you online. Deep dive into browser fingerprinting and the AdTech industry.',
-    url: 'https://panopticlick.org/anatomy',
+    url: 'https://panopticlick.org/anatomy/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
   },
   twitter: {
     title: 'How Online Tracking Works - Anatomy of Browser Surveillance',
     description:
       'Learn exactly how websites track you online. Deep dive into browser fingerprinting and the AdTech industry.',
+  },
+  // Hub canonical: safe here only because every child page overrides
+  // alternates with its own canonical
+  alternates: {
+    canonical: 'https://panopticlick.org/anatomy/',
   },
 };
 

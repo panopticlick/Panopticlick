@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'WebRTC Leak Test - Check if Your VPN is Leaking Your IP',
@@ -74,6 +75,13 @@ export default function WebRTCTestLayout({
             },
           }),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Tests', path: '/tests/' },
+          { name: 'WebRTC Leak Test', path: '/tests/webrtc/' },
+        ])}
       />
     </>
   );

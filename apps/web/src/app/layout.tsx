@@ -2,10 +2,9 @@ import type { Metadata, Viewport } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { FingerprintChat } from '@/components/ai';
+import { ConsentBanner } from '@/components/consent-banner';
+import { serif, sans, mono } from './fonts';
 import './globals.css';
-
-// Use system fonts for reliability - no network dependency
-// CSS variables are set in globals.css for customization
 
 // Metadata
 export const metadata: Metadata = {
@@ -89,6 +88,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      className={`${serif.variable} ${sans.variable} ${mono.variable}`}
     >
       <head>
         <link rel="preconnect" href="https://api.panopticlick.org" crossOrigin="" />
@@ -148,6 +148,9 @@ export default function RootLayout({
 
         {/* Global Footer */}
         <Footer />
+
+        {/* Consent banner (fixed overlay, shown until a choice is made) */}
+        <ConsentBanner />
 
         {/* AI Chat - Floating bottom right */}
         <FingerprintChat />

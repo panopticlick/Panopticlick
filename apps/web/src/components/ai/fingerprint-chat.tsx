@@ -192,7 +192,7 @@ export function FingerprintChat() {
                   </p>
                   <button
                     onClick={handleToggle}
-                    className="mt-3 text-xs font-mono font-bold uppercase tracking-wider text-highlight hover:text-highlight/80 transition-colors"
+                    className="marker-link mt-3 font-mono text-xs uppercase tracking-wider"
                   >
                     Chat Now →
                   </button>

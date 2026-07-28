@@ -1,7 +1,6 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  darkMode: ['class'],
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -52,11 +51,11 @@ const config: Config = {
           blue: '#2563eb',
         },
       },
-      // Typography
+      // Typography (loaded via next/font, see src/app/fonts.ts)
       fontFamily: {
-        serif: ['Merriweather', 'Georgia', 'serif'],
-        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-serif)', 'Georgia', 'serif'],
+        mono: ['var(--font-mono)', 'Consolas', 'monospace'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
       // Animations
       animation: {

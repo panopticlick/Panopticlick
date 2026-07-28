@@ -7,6 +7,7 @@ import {
   Stamp,
   Redacted,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd, techArticleJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Cookie Syncing Explained - How Trackers Share Your Identity | Panopticlick',
@@ -17,19 +18,52 @@ export const metadata: Metadata = {
     description:
       'How ad networks share your identity across the web in milliseconds.',
     type: 'article',
+    url: 'https://panopticlick.org/simulation/cookie-sync/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/simulation/cookie-sync/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function CookieSyncPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Simulation Lab', path: '/simulation/' },
+          { name: 'Cookie Syncing', path: '/simulation/cookie-sync/' },
+        ])}
+      />
+      <JsonLd
+        data={techArticleJsonLd({
+          headline: 'Cookie Syncing: How Ad Networks Share Your Identity',
+          description:
+            'How cookie syncing lets advertising networks share user identity across thousands of websites via ID bridging and match tables.',
+          path: '/simulation/cookie-sync/',
+          datePublished: '2025-12-10',
+          dateModified: '2026-07-26',
+          about: ['Cookie syncing', 'ID bridging', 'Match tables'],
+        })}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="ID BRIDGING">
           <DocumentHeader
             title="Cookie Syncing Demo"
             subtitle="How trackers share your identity across the web"
             classification="confidential"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <nav className="mb-8 p-4 bg-paper-100 rounded-sm">

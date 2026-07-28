@@ -8,6 +8,7 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 interface AnatomyCard {
   title: string;
@@ -48,9 +49,18 @@ const anatomyTopics: AnatomyCard[] = [
   },
 ];
 
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
+
 export default function AnatomyIndexPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Anatomy of Tracking', path: '/anatomy/' },
+        ])}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Semantic H1 for SEO */}
         <h1 className="font-serif text-4xl md:text-5xl font-bold text-center mb-8 tracking-tight">
@@ -62,7 +72,7 @@ export default function AnatomyIndexPage() {
             title="Anatomy of Tracking"
             subtitle="Dissecting the surveillance machinery piece by piece"
             classification="top-secret"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <div className="prose prose-lg max-w-none mb-8">

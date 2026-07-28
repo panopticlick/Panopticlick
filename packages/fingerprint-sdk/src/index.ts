@@ -14,7 +14,7 @@ export {
   detectBlocking,
   estimateEntropy,
 } from './collector';
-export type { CollectorOptions } from './collector';
+export type { CollectorOptions, ProgressCallback } from './collector';
 
 // Individual collectors (for advanced usage)
 export {

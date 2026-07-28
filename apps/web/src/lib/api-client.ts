@@ -5,20 +5,16 @@
  * Supports both local development and production environments.
  */
 
-import { useState, useCallback } from 'react';
 import type {
   FingerprintPayload,
+  NetworkIntelligence,
+  RTBSimulateResponse,
+  ScanStartResponse,
   ValuationReport,
 } from '@panopticlick/types';
+import { getConsent } from './consent';
 
 // Types not exported from @panopticlick/types - defined locally
-interface ScanSession {
-  sessionId: string;
-  createdAt: string;
-  fingerprint: FingerprintPayload;
-  report: ValuationReport;
-}
-
 interface ComparisonStats {
   uniqueness: number;
   percentile: number;
@@ -72,6 +68,65 @@ export class APIError extends Error {
       data
     );
   }
+}
+
+/**
+ * Session ownership token issued by /v1/scan/start.
+ *
+ * Session-scoped endpoints (privacy export, consent, opt-out, scan status)
+ * reject requests without it, so we keep the most recent token paired with the
+ * session it belongs to and never send it for a different session.
+ */
+const SESSION_TOKEN_KEY = 'panopticlick:sessionToken';
+
+interface SessionTokenRecord {
+  sessionId: string;
+  token: string;
+}
+
+let cachedSessionToken: SessionTokenRecord | null = null;
+
+export function storeSessionToken(sessionId: string, token: string): void {
+  cachedSessionToken = { sessionId, token };
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SESSION_TOKEN_KEY, JSON.stringify(cachedSessionToken));
+  } catch {
+    // Storage unavailable — the in-memory copy still covers this page view
+  }
+}
+
+export function getSessionToken(sessionId: string): string | null {
+  if (cachedSessionToken?.sessionId === sessionId) return cachedSessionToken.token;
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(SESSION_TOKEN_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SessionTokenRecord>;
+    if (parsed.sessionId === sessionId && typeof parsed.token === 'string') {
+      cachedSessionToken = { sessionId, token: parsed.token };
+      return parsed.token;
+    }
+  } catch {
+    // Malformed entry — treat as no token
+  }
+  return null;
+}
+
+export function clearSessionToken(): void {
+  cachedSessionToken = null;
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(SESSION_TOKEN_KEY);
+  } catch {
+    // Nothing to clean up
+  }
+}
+
+function sessionHeaders(sessionId: string): Record<string, string> {
+  const token = getSessionToken(sessionId);
+  return token ? { 'X-Session-Token': token } : {};
 }
 
 /**
@@ -182,17 +237,21 @@ export const api = {
       sessionId: string;
       report: ValuationReport;
       comparison: ComparisonStats;
+      network: NetworkIntelligence | null;
     }> {
-      const consent = options?.consent ?? true;
+      // Default to the site-wide consent banner state: only 'granted' opts in
+      // to server-side storage; 'denied'/'unset' stay local-only.
+      const consent = options?.consent ?? getConsent() === 'granted';
 
       // Start session
-      const start = await apiRequest<{
-        success: boolean;
-        sessionId: string;
-      }>('/v1/scan/start', {
+      const start = await apiRequest<ScanStartResponse>('/v1/scan/start', {
         method: 'POST',
         body: JSON.stringify({ consent, turnstileToken: options?.turnstileToken }),
       });
+
+      if (start.sessionToken) {
+        storeSessionToken(start.sessionId, start.sessionToken);
+      }
 
       // Collect fingerprint
       const collect = await apiRequest<{
@@ -244,42 +303,8 @@ export const api = {
         sessionId: start.sessionId,
         report: collect.report,
         comparison,
+        network: start.network ?? null,
       };
-    },
-
-    /**
-     * Get a previous scan result
-     */
-    async get(sessionId: string): Promise<ScanSession | null> {
-      try {
-        const status = await apiRequest<{ exists: boolean; createdAt?: string }>(
-          `/v1/scan/status/${sessionId}`
-        );
-
-        if (!status.exists) return null;
-
-        return {
-          sessionId,
-          createdAt: status.createdAt || new Date().toISOString(),
-          fingerprint: {} as FingerprintPayload,
-          report: {} as ValuationReport,
-        };
-      } catch (error) {
-        if (error instanceof APIError && error.status === 404) {
-          return null;
-        }
-        throw error;
-      }
-    },
-
-    /**
-     * Delete a scan session
-     */
-    async delete(sessionId: string): Promise<{ success: boolean }> {
-      return apiRequest(`/v1/privacy/opt-out`, {
-        method: 'POST',
-        body: JSON.stringify({ sessionIds: [sessionId] }),
-      });
     },
   },
 
@@ -288,58 +313,17 @@ export const api = {
    */
   rtb: {
     /**
-     * Run an RTB auction simulation
+     * Run an RTB auction simulation.
+     *
+     * The declared type is the shared contract; callers still normalize the
+     * payload through `lib/rtb-mapping` because the deployed API can be older
+     * than the contract.
      */
-    async simulate(fingerprint: FingerprintPayload): Promise<{
-      success: boolean;
-      auction: {
-        winner: string;
-        winningBid: number;
-        bids: Array<{
-          bidder: string;
-          amount: number;
-          interest: string;
-        }>;
-        timeline: Array<{
-          timestamp: number;
-          event: string;
-          data: unknown;
-        }>;
-      };
-    }> {
+    async simulate(fingerprint: FingerprintPayload): Promise<RTBSimulateResponse> {
       return apiRequest('/v1/rtb/simulate', {
         method: 'POST',
         body: JSON.stringify({ fingerprint }),
       });
-    },
-
-    /**
-     * Get RTB market data
-     */
-    async getMarketData(): Promise<{
-      averageCPM: number;
-      priceRanges: Record<string, { min: number; max: number; avg: number }>;
-      topCategories: Array<{ name: string; cpm: number; volume: number }>;
-    }> {
-      const stats = await apiRequest<{
-        cpmDistribution: Record<string, number>;
-        topPersonas: Array<{ id: string; percentage: number }>;
-      }>('/v1/rtb/stats');
-
-      return {
-        averageCPM: 4,
-        priceRanges: {
-          low: { min: 0.5, max: 2, avg: 1.2 },
-          medium: { min: 2, max: 5, avg: 3.5 },
-          high: { min: 5, max: 10, avg: 7 },
-          premium: { min: 10, max: 20, avg: 14 },
-        },
-        topCategories: (stats.topPersonas || []).map((p) => ({
-          name: p.id,
-          cpm: 4,
-          volume: Math.round((p.percentage || 0) * 100),
-        })),
-      };
     },
   },
 
@@ -383,42 +367,6 @@ export const api = {
         isEncrypted: res.resolver.isEncrypted,
       };
     },
-
-    /**
-     * Get defense recommendations based on fingerprint
-     */
-    async getRecommendations(fingerprint: FingerprintPayload): Promise<{
-      score: number;
-      tier: 'exposed' | 'basic' | 'protected' | 'hardened' | 'fortress';
-      recommendations: string[];
-      weaknesses: Array<{
-        area: string;
-        severity: 'low' | 'medium' | 'high' | 'critical';
-        description: string;
-        fix: string;
-      }>;
-    }> {
-      const res = await apiRequest<{
-        success: boolean;
-        status: { overallTier: string; score: number; weaknesses?: string[] };
-        hardeningGuide: { steps: Array<{ title: string; description: string }> };
-      }>('/v1/defense/test', {
-        method: 'POST',
-        body: JSON.stringify({ fingerprint }),
-      });
-
-      return {
-        score: res.status.score,
-        tier: res.status.overallTier as 'exposed' | 'basic' | 'protected' | 'hardened' | 'fortress',
-        recommendations: res.hardeningGuide.steps.map((s) => s.title),
-        weaknesses: (res.status.weaknesses || []).map((w) => ({
-          area: w,
-          severity: 'medium',
-          description: w,
-          fix: '',
-        })),
-      };
-    },
   },
 
   /**
@@ -455,99 +403,12 @@ export const api = {
         componentStats: {},
       };
     },
-
-    /**
-     * Compare a fingerprint to the population
-     */
-    async compare(fingerprint: FingerprintPayload): Promise<ComparisonStats> {
-      const { generateHashes } = await import('@panopticlick/fingerprint-sdk');
-      const hashes = await generateHashes(fingerprint);
-      const res = await apiRequest<{
-        found: boolean;
-        rarity?: { score: number; percentile: number; similarFingerprints: number };
-        total?: number;
-      }>(`/v1/stats/compare/${hashes.fullHash}`);
-
-      return {
-        uniqueness: res.rarity?.score ?? 0,
-        percentile: res.rarity?.percentile ?? 0,
-        similarCount: res.rarity?.similarFingerprints ?? 0,
-        totalScans: res.total ?? 0,
-        componentComparisons: {},
-      };
-    },
-
-    /**
-     * Get entropy distribution data
-     */
-    async getEntropyDistribution(): Promise<{
-      buckets: Array<{
-        range: [number, number];
-        count: number;
-        percentage: number;
-      }>;
-      median: number;
-      mean: number;
-      stdDev: number;
-    }> {
-      const res = await apiRequest<{
-        buckets: Array<{ range: string; count: number; avgEntropy: number }>;
-      }>('/v1/stats/entropy');
-
-      return {
-        buckets: res.buckets.map((b) => ({
-          range: [0, 0] as [number, number],
-          count: b.count,
-          percentage: 0,
-        })),
-        median: 0,
-        mean: 0,
-        stdDev: 0,
-      };
-    },
   },
 
   /**
    * Privacy endpoints
    */
   privacy: {
-    /**
-     * Get data associated with a session
-     */
-    async getData(sessionId: string): Promise<{
-      found: boolean;
-      data?: {
-        sessionId: string;
-        createdAt: string;
-        fingerprint: FingerprintPayload;
-      };
-    }> {
-      const res = await apiRequest<{ success: boolean; data?: unknown }>(
-        '/v1/privacy/my-data'
-      );
-
-      return {
-        found: res.success && !!res.data,
-        data: res.data as any,
-      };
-    },
-
-    /**
-     * Delete all data associated with a session
-     */
-    async deleteData(sessionId: string): Promise<{
-      success: boolean;
-      deleted: {
-        sessions: number;
-        fingerprints: number;
-      };
-    }> {
-      return apiRequest(`/v1/privacy/opt-out`, {
-        method: 'POST',
-        body: JSON.stringify({ sessionIds: [sessionId] }),
-      });
-    },
-
     /**
      * Export all data associated with a session (GDPR compliance)
      */
@@ -558,54 +419,8 @@ export const api = {
     }> {
       return apiRequest(`/v1/privacy/export/${sessionId}`, {
         method: 'POST',
+        headers: sessionHeaders(sessionId),
       });
     },
   },
-
-  /**
-   * Health check
-   */
-  async health(): Promise<{
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    version: string;
-    uptime: number;
-    checks: Record<string, boolean>;
-  }> {
-    return apiRequest('/health');
-  },
 };
-
-/**
- * Create a typed API hook for React
- */
-export function createAPIHook<T, Args extends unknown[]>(
-  fetcher: (...args: Args) => Promise<T>
-) {
-  return function useAPI(...args: Args) {
-    const [data, setData] = useState<T | null>(null);
-    const [error, setError] = useState<APIError | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-
-    const execute = useCallback(async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const result = await fetcher(...args);
-        setData(result);
-        return result;
-      } catch (err) {
-        const apiError =
-          err instanceof APIError
-            ? err
-            : new APIError('Unknown error', 'UNKNOWN', 500, err);
-        setError(apiError);
-        throw apiError;
-      } finally {
-        setIsLoading(false);
-      }
-    }, [args]);
-
-    return { data, error, isLoading, execute };
-  };
-}

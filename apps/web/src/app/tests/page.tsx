@@ -8,6 +8,7 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 interface TestCard {
   title: string;
@@ -57,9 +58,18 @@ const tests: TestCard[] = [
   },
 ];
 
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
+
 export default function TestsIndexPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Tests', path: '/tests/' },
+        ])}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Semantic H1 for SEO */}
         <h1 className="font-serif text-4xl md:text-5xl font-bold text-center mb-8 tracking-tight">
@@ -71,7 +81,7 @@ export default function TestsIndexPage() {
             title="Privacy Test Suite"
             subtitle="Comprehensive browser security analysis tools"
             classification="confidential"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <div className="prose prose-lg max-w-none mb-8">

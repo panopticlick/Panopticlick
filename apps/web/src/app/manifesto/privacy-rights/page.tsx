@@ -6,6 +6,7 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Digital Privacy Rights Declaration | Panopticlick',
@@ -16,19 +17,41 @@ export const metadata: Metadata = {
     description:
       'Privacy is a human right. A manifesto for data sovereignty and digital freedom.',
     type: 'article',
+    url: 'https://panopticlick.org/manifesto/privacy-rights/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/manifesto/privacy-rights/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function PrivacyRightsPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Manifesto', path: '/manifesto/' },
+          { name: 'Digital Privacy Rights', path: '/manifesto/privacy-rights/' },
+        ])}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="DECLARATION">
           <DocumentHeader
             title="Digital Privacy Rights"
             subtitle="A Declaration for the Internet Age"
             classification="unclassified"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <nav className="mb-8 p-4 bg-paper-100 rounded-sm">

@@ -132,6 +132,15 @@
     @apply transform -rotate-1 scale-105;
   }
 
+  /* Marker-style link: readable ink text with highlight underline on light backgrounds */
+  .marker-link {
+    @apply font-bold text-ink underline decoration-highlight decoration-4 underline-offset-2 transition-colors;
+  }
+
+  .marker-link:hover {
+    @apply bg-highlight no-underline;
+  }
+
   /* Dossier card */
   .dossier-card {
     @apply document;

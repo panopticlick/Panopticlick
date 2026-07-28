@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Document,
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui';
 import { formatCPM, entropyToOneIn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
+import { getConsent, subscribeConsent, type ConsentState } from '@/lib/consent';
 import type { FingerprintPayload, ValuationReport } from '@panopticlick/types';
 
 // Note: metadata is in layout.tsx or metadata.ts for client components
@@ -31,6 +32,19 @@ export default function ScanPage() {
   const [exportUrl, setExportUrl] = useState<string | null>(null);
   const [storeData, setStoreData] = useState(false);
   const [apiStatus, setApiStatus] = useState<ApiStatus>('idle');
+  const [siteConsent, setSiteConsent] = useState<ConsentState>('unset');
+
+  // Sync with the site-wide consent banner: granted pre-checks the opt-in,
+  // denied locks the scan to local-only mode.
+  useEffect(() => {
+    const apply = (state: ConsentState) => {
+      setSiteConsent(state);
+      if (state === 'granted') setStoreData(true);
+      if (state === 'denied') setStoreData(false);
+    };
+    apply(getConsent());
+    return subscribeConsent(apply);
+  }, []);
 
   const runScan = useCallback(async () => {
     setPhase('scanning');
@@ -166,6 +180,7 @@ export default function ScanPage() {
                 error={error}
                 storeData={storeData}
                 onToggleStore={setStoreData}
+                locked={siteConsent === 'denied'}
               />
             </motion.div>
           )}
@@ -256,11 +271,13 @@ function ConsentPhase({
   error,
   storeData,
   onToggleStore,
+  locked,
 }: {
   onAccept: () => void;
   error: string | null;
   storeData: boolean;
   onToggleStore: (value: boolean) => void;
+  locked: boolean;
 }) {
   return (
     <Document variant="classified" watermark="CONSENT REQUIRED">
@@ -316,6 +333,7 @@ function ConsentPhase({
             type="checkbox"
             className="mt-1"
             checked={storeData}
+            disabled={locked}
             onChange={(e) => onToggleStore(e.target.checked)}
           />
           <div className="space-y-1">
@@ -326,6 +344,12 @@ function ConsentPhase({
               When enabled we send hashed IP + fingerprint to our API for population comparisons.
               Leave unchecked to keep everything 100% local on this device.
             </p>
+            {locked && (
+              <p className="text-xs text-ink-300">
+                You declined data sharing via the site banner, so this scan stays
+                local-only. Use &ldquo;Privacy choices&rdquo; in the footer to change that.
+              </p>
+            )}
           </div>
         </label>
 
@@ -834,7 +858,7 @@ function ResultsPhase({
         </ul>
 
         <p className="mb-8">
-          Check our <a href="/defense/" className="text-highlight hover:underline">Defense Armory</a> for
+          Check our <a href="/defense/" className="marker-link">Defense Armory</a> for
           detailed guides on reducing your digital footprint. Every step you take makes the
           surveillance economy a little less profitable.
         </p>

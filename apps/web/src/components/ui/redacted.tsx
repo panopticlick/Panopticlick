@@ -150,7 +150,8 @@ export function RedactedBlock({
               <div
                 key={i}
                 className="h-4 bg-redaction rounded-sm"
-                style={{ width: `${85 + Math.random() * 15}%` }}
+                // Deterministic pseudo-random widths so SSR and client render match
+                style={{ width: `${85 + ((i * 37) % 15)}%` }}
               />
             ))}
           </motion.div>

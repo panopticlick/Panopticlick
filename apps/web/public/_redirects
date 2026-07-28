@@ -1,0 +1,15 @@
+# Cloudflare Pages redirects
+# https://developers.cloudflare.com/pages/platform/redirects/
+# Note: trailing-slash normalization is handled by Next.js (trailingSlash: true)
+# plus Cloudflare Pages' automatic directory-index redirects — no rules needed here.
+
+# Legacy URL support
+/test / 301
+/fingerprint / 301
+/track / 301
+
+# Old Panopticlick paths
+/eff.html /about/ 301
+/faq.html /about/ 301
+/about.html /about/ 301
+/privacy.html /privacy/ 301

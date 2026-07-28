@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Document,
@@ -19,6 +19,16 @@ import { cn } from '@/lib/utils';
 export default function HomePage() {
   const [scanStarted, setScanStarted] = useState(false);
 
+  // Generated on the client only: Math.random()/new Date() in render would
+  // mismatch the statically exported HTML and break hydration.
+  const [caseMeta, setCaseMeta] = useState<{ caseNumber: string; date: Date } | null>(null);
+  useEffect(() => {
+    setCaseMeta({
+      caseNumber: `PNP-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      date: new Date(),
+    });
+  }, []);
+
   return (
     <div className="bg-paper grid-bg">
       {/* Hero Section */}
@@ -33,8 +43,8 @@ export default function HomePage() {
             title="Subject: Your Browser"
             subtitle="An investigation into digital identity and advertising value"
             classification="confidential"
-            caseNumber={`PNP-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`}
-            date={new Date()}
+            caseNumber={caseMeta?.caseNumber ?? 'PNP-████-████'}
+            date={caseMeta?.date}
           />
 
           {/* Main content */}
@@ -406,7 +416,7 @@ export default function HomePage() {
             </p>
 
             <p className="mb-6">
-              After you run our test, check out our <a href="/defense/" className="text-highlight hover:underline">Defense Armory</a> for
+              After you run our test, check out our <a href="/defense/" className="marker-link">Defense Armory</a> for
               practical steps you can take:
             </p>
 

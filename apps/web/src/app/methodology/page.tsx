@@ -6,11 +6,12 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd, techArticleJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Methodology - How We Calculate Browser Fingerprint Uniqueness',
   description:
-    'Learn how Panopticlick calculates browser fingerprint entropy, uniqueness scores, and advertising valuations. Technical documentation of our fingerprinting methodology.',
+    'How Panopticlick calculates browser fingerprint entropy, uniqueness scores, and advertising valuations. All figures are modeled estimates based on published research, with sources cited.',
   keywords: [
     'browser fingerprinting methodology',
     'entropy calculation',
@@ -26,19 +27,56 @@ export const metadata: Metadata = {
       'Technical documentation of our browser fingerprinting methodology.',
     type: 'website',
     url: 'https://panopticlick.org/methodology/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/methodology/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function MethodologyPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Methodology', path: '/methodology/' },
+        ])}
+      />
+      <JsonLd
+        data={techArticleJsonLd({
+          headline: 'How Panopticlick Measures Fingerprint Uniqueness and Advertising Value',
+          description:
+            'Methodology for Shannon-entropy fingerprint uniqueness scores and modeled RTB advertising valuations, including data sources and known limitations.',
+          path: '/methodology/',
+          datePublished: '2025-11-30',
+          dateModified: '2026-07-26',
+          about: ['Browser fingerprinting', 'Shannon entropy', 'Real-time bidding'],
+          citations: [
+            'Eckersley, P. (2010). How Unique Is Your Web Browser? Privacy Enhancing Technologies Symposium. (EFF Panopticlick)',
+            'Laperdrix, P., Rudametkin, W., & Baudry, B. (2016). Beauty and the Beast: Diverting Modern Web Browsers to Build Unique Browser Fingerprints. IEEE Symposium on Security and Privacy. (INRIA AmIUnique)',
+            'Mowery, K., & Shacham, H. (2012). Pixel Perfect: Fingerprinting Canvas in HTML5. W2SP.',
+            'Englehardt, S., & Narayanan, A. (2016). Online Tracking: A 1-million-site Measurement and Analysis. ACM CCS. (Princeton WebTAP)',
+          ],
+        })}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="METHODOLOGY">
           <DocumentHeader
             title="Methodology"
             subtitle="How we calculate browser fingerprint uniqueness"
             classification="unclassified"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <article className="prose prose-lg max-w-none">
@@ -50,12 +88,50 @@ export default function MethodologyPage() {
               </p>
             </DocumentSection>
 
-            <DocumentSection title="2. Fingerprint Collection">
+            <DocumentSection title="2. Data Sources & Modeled Estimates">
+              <p>
+                <strong>Disclosure:</strong> every number Panopticlick shows you is a
+                modeled estimate, not a live market measurement. Here is exactly where
+                each figure comes from:
+              </p>
+              <ul>
+                <li>
+                  <strong>Entropy values</strong> are computed against a hand-curated
+                  probability table of browser attribute distributions (screen resolution,
+                  platform, timezone, CPU cores, device memory, and more). These priors are
+                  derived from published fingerprinting research—EFF's original
+                  Panopticlick study (Eckersley, 2010), INRIA's AmIUnique project
+                  (Laperdrix et al., 2016), and Princeton WebTAP's 1-million-site
+                  measurement (Englehardt &amp; Narayanan, 2016)—not from traffic
+                  measured on this site.
+                </li>
+                <li>
+                  <strong>RTB valuations</strong> come from a modeled simulation: six
+                  fictional DSP (Demand-Side Platform) profiles mirror the structure of
+                  real DSP categories, base CPM rates follow published industry ranges
+                  (roughly $1–15 CPM depending on vertical), and each simulated bid adds
+                  ±10% random variance to imitate auction dynamics. No real bid request
+                  is sent, and no real auction takes place.
+                </li>
+                <li>
+                  <strong>Uniqueness ("1 in N")</strong> is derived as 2^entropy from the
+                  summed entropy of individual components. This assumes components are
+                  statistically independent; in reality they correlate (platform and
+                  fonts, for example), so the true figure is an upper bound.
+                </li>
+              </ul>
+              <p>
+                We publish these limitations deliberately: a privacy tool that inflated
+                its own numbers would be part of the machinery it claims to expose.
+              </p>
+            </DocumentSection>
+
+            <DocumentSection title="3. Fingerprint Collection">
               <p>
                 We collect fingerprinting signals from multiple sources:
               </p>
 
-              <h4>2.1 Canvas Fingerprint</h4>
+              <h4>3.1 Canvas Fingerprint</h4>
               <p>
                 We render text and shapes on an HTML5 canvas element and extract the
                 pixel data. Differences in GPU, drivers, and rendering engines create
@@ -69,26 +145,26 @@ export default function MethodologyPage() {
                 <div>const hash = sha256(data);</div>
               </div>
 
-              <h4>2.2 WebGL Fingerprint</h4>
+              <h4>3.2 WebGL Fingerprint</h4>
               <p>
                 We query WebGL renderer information and render a 3D scene. The combination
                 of GPU vendor, renderer string, and rendering output creates a unique signature.
               </p>
 
-              <h4>2.3 Audio Fingerprint</h4>
+              <h4>3.3 Audio Fingerprint</h4>
               <p>
                 We create an audio oscillator and measure the processed output. Different
                 audio stacks produce subtly different results due to floating-point precision
                 differences.
               </p>
 
-              <h4>2.4 Font Enumeration</h4>
+              <h4>3.4 Font Enumeration</h4>
               <p>
                 We test for the presence of ~140 fonts by rendering text and measuring
                 dimensions. The set of installed fonts is highly distinctive.
               </p>
 
-              <h4>2.5 Additional Signals</h4>
+              <h4>3.5 Additional Signals</h4>
               <ul>
                 <li><strong>Screen</strong>: Resolution, color depth, pixel ratio</li>
                 <li><strong>Timezone</strong>: IANA timezone, UTC offset</li>
@@ -97,13 +173,13 @@ export default function MethodologyPage() {
               </ul>
             </DocumentSection>
 
-            <DocumentSection title="3. Entropy Calculation">
+            <DocumentSection title="4. Entropy Calculation">
               <p>
                 We use Shannon entropy to measure the information content of each
                 fingerprinting signal.
               </p>
 
-              <h4>3.1 Information Theory Basis</h4>
+              <h4>4.1 Information Theory Basis</h4>
               <p>
                 Entropy (H) is calculated as:
               </p>
@@ -114,7 +190,7 @@ export default function MethodologyPage() {
                 Where p(x) is the probability of observing a particular value.
               </p>
 
-              <h4>3.2 Practical Calculation</h4>
+              <h4>4.2 Practical Calculation</h4>
               <p>
                 For each fingerprint component, we calculate entropy based on observed
                 frequencies in our dataset:
@@ -129,7 +205,7 @@ export default function MethodologyPage() {
                 <div className="mt-2">// Total entropy is sum of all contributions</div>
               </div>
 
-              <h4>3.3 Component Weights</h4>
+              <h4>4.3 Component Weights</h4>
               <p>
                 Different components have different entropy ranges:
               </p>
@@ -176,7 +252,7 @@ export default function MethodologyPage() {
               </table>
             </DocumentSection>
 
-            <DocumentSection title="4. Uniqueness Score">
+            <DocumentSection title="5. Uniqueness Score">
               <p>
                 We express uniqueness as "1 in N" where N = 2^entropy:
               </p>
@@ -191,12 +267,12 @@ export default function MethodologyPage() {
               </p>
             </DocumentSection>
 
-            <DocumentSection title="5. RTB Valuation">
+            <DocumentSection title="6. RTB Valuation">
               <p>
                 We simulate Real-Time Bidding (RTB) auctions to estimate advertising value.
               </p>
 
-              <h4>5.1 Persona Detection</h4>
+              <h4>6.1 Persona Detection</h4>
               <p>
                 Based on fingerprint signals, we infer demographic categories that
                 advertisers target:
@@ -208,7 +284,7 @@ export default function MethodologyPage() {
                 <li><strong>Location</strong>: US timezone → US market (higher CPMs)</li>
               </ul>
 
-              <h4>5.2 CPM Calculation</h4>
+              <h4>6.2 CPM Calculation</h4>
               <p>
                 We simulate bids from fictional DSPs with different targeting criteria.
                 CPM rates are based on industry averages:
@@ -221,7 +297,7 @@ export default function MethodologyPage() {
                 <div><strong>General Display:</strong> $1-3 CPM</div>
               </div>
 
-              <h4>5.3 Annual Value Estimation</h4>
+              <h4>6.3 Annual Value Estimation</h4>
               <p>
                 We estimate annual value based on typical browsing patterns:
               </p>
@@ -241,12 +317,12 @@ export default function MethodologyPage() {
               </div>
             </DocumentSection>
 
-            <DocumentSection title="6. Defense Analysis">
+            <DocumentSection title="7. Defense Analysis">
               <p>
                 We evaluate your browser's privacy protections:
               </p>
 
-              <h4>6.1 Scoring Criteria</h4>
+              <h4>7.1 Scoring Criteria</h4>
               <ul>
                 <li><strong>Canvas blocking</strong>: +20 points</li>
                 <li><strong>WebGL protection</strong>: +15 points</li>
@@ -257,7 +333,7 @@ export default function MethodologyPage() {
                 <li><strong>WebRTC protection</strong>: +10 points</li>
               </ul>
 
-              <h4>6.2 Tier Classification</h4>
+              <h4>7.2 Tier Classification</h4>
               <ul>
                 <li><strong>Fortress (90-100)</strong>: Maximum protection</li>
                 <li><strong>Hardened (70-89)</strong>: Strong protection</li>
@@ -267,7 +343,7 @@ export default function MethodologyPage() {
               </ul>
             </DocumentSection>
 
-            <DocumentSection title="7. Limitations">
+            <DocumentSection title="8. Limitations">
               <p>
                 Our methodology has known limitations:
               </p>
@@ -291,7 +367,7 @@ export default function MethodologyPage() {
               </ul>
             </DocumentSection>
 
-            <DocumentSection title="8. References">
+            <DocumentSection title="9. References">
               <p>
                 Our methodology is based on academic research:
               </p>
@@ -316,7 +392,7 @@ export default function MethodologyPage() {
               </ul>
             </DocumentSection>
 
-            <DocumentSection title="9. Open Source">
+            <DocumentSection title="10. Open Source">
               <p>
                 Our fingerprinting SDK and valuation engine are open source.
                 You can review the code and methodology:
@@ -336,7 +412,7 @@ export default function MethodologyPage() {
         </Document>
 
         <div className="flex justify-center gap-6 mt-8">
-          <Stamp variant="verified">Peer Reviewed</Stamp>
+          <Stamp variant="verified">Sources Cited</Stamp>
           <Stamp variant="classified">Research</Stamp>
         </div>
 

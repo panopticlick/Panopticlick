@@ -1,0 +1,35 @@
+# Panopticlick
+
+> Free browser fingerprinting test and privacy education project. Panopticlick shows how uniquely identifiable your browser is, simulates the real-time bidding (RTB) auctions that monetize your data, and teaches you how to defend against tracking. Independent project, not affiliated with the Electronic Frontier Foundation (EFF).
+
+All analysis runs client-side in your browser. Nothing is stored without explicit consent; IP addresses are only ever stored as SHA-256 hashes, and stored data is automatically deleted after 30 days.
+
+## Tools
+
+- https://panopticlick.org/ : Browser fingerprint test — measures your browser's uniqueness in bits of entropy and estimates its advertising value.
+- https://panopticlick.org/simulation/rtb/ : RTB auction simulator — runs a simulated real-time bidding auction on your fingerprint with DSP bids and CPM prices.
+- https://panopticlick.org/tests/webrtc/ : WebRTC leak test — checks whether WebRTC exposes your real IP address, even behind a VPN.
+- https://panopticlick.org/tests/dns/ : DNS leak test — checks whether your DNS queries bypass your VPN and reach your ISP.
+- https://panopticlick.org/tests/blocker/ : Ad blocker test — measures how effectively your blocker stops real-world tracker scripts.
+- https://panopticlick.org/tests/hsts/ : HSTS supercookie demo — interactive demonstration of tracking that survives cookie clearing.
+- https://panopticlick.org/simulation/cname/ : CNAME cloaking explainer — how trackers disguise themselves as first-party subdomains.
+- https://panopticlick.org/simulation/cookie-sync/ : Cookie syncing explainer — how ad networks share your identity via ID bridging.
+
+## Educational guides
+
+- https://panopticlick.org/anatomy/fingerprinting/ : Canvas, WebGL, and audio fingerprinting explained.
+- https://panopticlick.org/anatomy/supercookies/ : HSTS, favicon cache, and ETag supercookies explained.
+- https://panopticlick.org/anatomy/behavior/ : Behavioral tracking via mouse, keyboard, and scroll patterns.
+- https://panopticlick.org/defense/hardening/ : Step-by-step browser hardening guide for Firefox, Chrome, and Brave.
+
+## Methodology
+
+- https://panopticlick.org/methodology/ : Full methodology with sources and limitations.
+- Uniqueness is measured as Shannon entropy summed across fingerprint components (canvas, WebGL, audio, fonts, screen, navigator); "1 in N" uniqueness is 2^entropy and is an upper bound that assumes component independence.
+- Entropy priors are a hand-curated probability table derived from published research (EFF Panopticlick / Eckersley 2010, INRIA AmIUnique / Laperdrix et al. 2016, Princeton WebTAP / Englehardt & Narayanan 2016), not from traffic measured on this site.
+- Advertising valuations are modeled simulations: fictional DSP profiles with base CPM rates from published industry ranges (~$1-15 CPM by vertical) plus ±10% random variance. No real bid requests are sent.
+
+## Contact
+
+- Website: https://panopticlick.org/about/
+- Source code: https://github.com/Panopticlick/Panopticlick

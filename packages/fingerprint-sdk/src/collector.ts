@@ -30,6 +30,12 @@ import { sha256, combineHashes, generateSessionId } from './hash';
 const SDK_VERSION = '1.0.0';
 
 /**
+ * Called as each collector settles. `percent` is cumulative (0-100) and only
+ * ever moves forward; 100 is reported once the payload is assembled.
+ */
+export type ProgressCallback = (step: string, percent: number) => void;
+
+/**
  * Collector configuration options
  */
 export interface CollectorOptions {
@@ -65,6 +71,38 @@ export interface CollectorOptions {
     audio?: boolean;
     fonts?: boolean;
   };
+
+  /**
+   * Progress reporter driven by actual collector completion
+   */
+  onProgress?: ProgressCallback;
+}
+
+/**
+ * Weighted progress reporter. Weights sum to 95 so the remaining 5% covers
+ * assembling the payload, keeping the bar honest instead of timer-driven.
+ */
+interface ProgressTracker {
+  track<T>(label: string, weight: number, promise: Promise<T>): Promise<T>;
+  complete(label: string): void;
+}
+
+function createProgressTracker(onProgress?: ProgressCallback): ProgressTracker {
+  let percent = 0;
+
+  return {
+    track(label, weight, promise) {
+      return promise.then((value) => {
+        percent = Math.min(99, percent + weight);
+        onProgress?.(label, Math.round(percent));
+        return value;
+      });
+    },
+    complete(label) {
+      percent = 100;
+      onProgress?.(label, 100);
+    },
+  };
 }
 
 /**
@@ -81,6 +119,7 @@ export async function collectFingerprint(
     consentGiven = false,
     debug = false,
     skip = {},
+    onProgress,
   } = options;
 
   const log = debug
@@ -89,16 +128,20 @@ export async function collectFingerprint(
 
   log('Starting fingerprint collection...');
 
+  const progress = createProgressTracker(onProgress);
+  onProgress?.('Opening case file', 0);
+
   // Collect all signals in parallel where possible
   const [hardware, software, capabilities, network] = await Promise.all([
-    collectHardwareSignals(timeout, skip, log),
-    collectSoftware(log),
-    collectCapabilities(log),
-    collectNetwork(log),
+    collectHardwareSignals(timeout, skip, log, progress),
+    progress.track('Reading navigator profile', 10, collectSoftware(log)),
+    progress.track('Probing browser capabilities', 8, collectCapabilities(log)),
+    progress.track('Sampling network conditions', 4, collectNetwork(log)),
   ]);
 
   const collectDuration = Math.round(performance.now() - startTime);
   log(`Collection complete in ${collectDuration}ms`);
+  progress.complete('Evidence collection complete');
 
   // Build metadata
   const meta: FingerprintMeta = {
@@ -124,7 +167,8 @@ export async function collectFingerprint(
 async function collectHardwareSignals(
   timeout: number,
   skip: CollectorOptions['skip'] = {},
-  log: (msg: string) => void
+  log: (msg: string) => void,
+  progress: ProgressTracker
 ): Promise<HardwareSignals> {
   log('Collecting hardware signals...');
 
@@ -137,19 +181,35 @@ async function collectHardwareSignals(
 
   // Collect async signals in parallel
   const [canvas, webgl, audio, fonts, screen] = await Promise.all([
-    skip.canvas
-      ? Promise.resolve(null)
-      : withTimeout(collectCanvas(), null).catch(() => null),
-    skip.webgl
-      ? Promise.resolve(null)
-      : withTimeout(collectWebGL(), null).catch(() => null),
-    skip.audio
-      ? Promise.resolve(null)
-      : withTimeout(collectAudio(), null).catch(() => null),
-    skip.fonts
-      ? Promise.resolve(null)
-      : withTimeout(collectFonts(), null).catch(() => null),
-    Promise.resolve(collectScreen()),
+    progress.track(
+      'Canvas render signature',
+      16,
+      skip.canvas
+        ? Promise.resolve(null)
+        : withTimeout(collectCanvas(), null).catch(() => null)
+    ),
+    progress.track(
+      'WebGL / GPU interrogation',
+      16,
+      skip.webgl
+        ? Promise.resolve(null)
+        : withTimeout(collectWebGL(), null).catch(() => null)
+    ),
+    progress.track(
+      'Audio stack analysis',
+      14,
+      skip.audio
+        ? Promise.resolve(null)
+        : withTimeout(collectAudio(), null).catch(() => null)
+    ),
+    progress.track(
+      'Font enumeration',
+      22,
+      skip.fonts
+        ? Promise.resolve(null)
+        : withTimeout(collectFonts(), null).catch(() => null)
+    ),
+    progress.track('Display measurements', 5, Promise.resolve(collectScreen())),
   ]);
 
   log(`Canvas: ${canvas ? 'collected' : 'skipped/failed'}`);

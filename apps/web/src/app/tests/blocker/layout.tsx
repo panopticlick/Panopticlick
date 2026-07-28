@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Ad Blocker Test - How Effective is Your Ad Blocker?',
@@ -75,6 +76,13 @@ export default function BlockerTestLayout({
             },
           }),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Tests', path: '/tests/' },
+          { name: 'Ad Blocker Test', path: '/tests/blocker/' },
+        ])}
       />
     </>
   );

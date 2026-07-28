@@ -6,6 +6,7 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy - Panopticlick',
@@ -17,6 +18,17 @@ export const metadata: Metadata = {
       'Our commitment to your privacy. Learn how we handle data.',
     type: 'website',
     url: 'https://panopticlick.org/privacy/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/privacy/',
   },
 };
 
@@ -25,6 +37,12 @@ export default function PrivacyPage() {
 
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Policy', path: '/privacy/' },
+        ])}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="dossier" watermark="POLICY">
           <DocumentHeader

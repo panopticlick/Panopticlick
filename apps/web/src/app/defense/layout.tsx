@@ -18,12 +18,25 @@ export const metadata: Metadata = {
     title: 'Browser Privacy Protection Tools - Defense Armory',
     description:
       'Free tools and guides to protect your online privacy and defend against tracking.',
-    url: 'https://panopticlick.org/defense',
+    url: 'https://panopticlick.org/defense/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
   },
   twitter: {
     title: 'Browser Privacy Protection Tools - Defense Armory',
     description:
       'Free tools and guides to protect your online privacy and defend against tracking.',
+  },
+  // Hub canonical: safe here only because every child page overrides
+  // alternates with its own canonical
+  alternates: {
+    canonical: 'https://panopticlick.org/defense/',
   },
 };
 

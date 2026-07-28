@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'DNS Leak Test - Check if Your DNS Queries Are Exposed',
@@ -75,6 +76,13 @@ export default function DNSTestLayout({
             },
           }),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Tests', path: '/tests/' },
+          { name: 'DNS Leak Test', path: '/tests/dns/' },
+        ])}
       />
     </>
   );

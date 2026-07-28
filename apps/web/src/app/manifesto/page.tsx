@@ -8,6 +8,7 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 interface ManifestoSection {
   title: string;
@@ -33,9 +34,18 @@ const manifestoSections: ManifestoSection[] = [
   },
 ];
 
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
+
 export default function ManifestoIndexPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Manifesto', path: '/manifesto/' },
+        ])}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         {/* Semantic H1 for SEO */}
         <h1 className="font-serif text-4xl md:text-5xl font-bold text-center mb-8 tracking-tight">
@@ -47,7 +57,7 @@ export default function ManifestoIndexPage() {
             title="Deconstruct Your Digital Shadow"
             subtitle="A declaration of digital privacy rights"
             classification="unclassified"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <div className="prose prose-lg max-w-none mb-8">

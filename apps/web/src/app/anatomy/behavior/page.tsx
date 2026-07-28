@@ -7,6 +7,7 @@ import {
   Stamp,
   Redacted,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd, techArticleJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Behavioral Tracking - Mouse, Keyboard & Scroll Fingerprinting | Panopticlick',
@@ -17,19 +18,52 @@ export const metadata: Metadata = {
     description:
       'Mouse dynamics, keystroke timing, scroll patterns - your behavior is as unique as your fingerprint.',
     type: 'article',
+    url: 'https://panopticlick.org/anatomy/behavior/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/anatomy/behavior/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function BehaviorTrackingPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Anatomy of Tracking', path: '/anatomy/' },
+          { name: 'Behavioral Tracking', path: '/anatomy/behavior/' },
+        ])}
+      />
+      <JsonLd
+        data={techArticleJsonLd({
+          headline: 'Behavioral Tracking: Mouse, Keyboard & Scroll Fingerprinting',
+          description:
+            'How mouse movements, typing patterns, and scroll behavior create a unique behavioral fingerprint that identifies you across websites.',
+          path: '/anatomy/behavior/',
+          datePublished: '2025-12-10',
+          dateModified: '2026-07-26',
+          about: ['Mouse dynamics', 'Keystroke timing', 'Scroll patterns'],
+        })}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="BEHAVIORAL">
           <DocumentHeader
             title="Behavioral Tracking"
             subtitle="Your actions reveal your identity"
             classification="top-secret"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <nav className="mb-8 p-4 bg-paper-100 rounded-sm">

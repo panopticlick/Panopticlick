@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { PrivacyChoicesButton } from '@/components/consent-banner';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -127,6 +128,8 @@ export function Footer() {
             © {currentYear} Panopticlick. No tracking. No cookies. Just privacy research.
           </p>
           <div className="flex items-center gap-4 text-paper-400 text-xs">
+            <PrivacyChoicesButton />
+            <span className="hidden sm:inline">•</span>
             <span>Made with privacy in mind</span>
             <span className="hidden sm:inline">•</span>
             <a

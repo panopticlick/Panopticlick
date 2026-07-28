@@ -7,6 +7,7 @@ import {
   Stamp,
   Redacted,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd, techArticleJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Supercookies Explained - HSTS, Favicon, ETag Tracking | Panopticlick',
@@ -17,19 +18,57 @@ export const metadata: Metadata = {
     description:
       'HSTS supercookies, favicon cache tracking, ETag identifiers - tracking mechanisms that survive everything.',
     type: 'article',
+    url: 'https://panopticlick.org/anatomy/supercookies/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/anatomy/supercookies/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function SupercookiesPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Anatomy of Tracking', path: '/anatomy/' },
+          { name: 'Supercookies', path: '/anatomy/supercookies/' },
+        ])}
+      />
+      <JsonLd
+        data={techArticleJsonLd({
+          headline: 'Supercookies Explained: HSTS, Favicon & ETag Tracking',
+          description:
+            'Persistent tracking mechanisms that survive cookie deletion, private browsing, and browser reinstalls: HSTS supercookies, favicon cache tracking, ETag identifiers, and localStorage.',
+          path: '/anatomy/supercookies/',
+          datePublished: '2025-12-10',
+          dateModified: '2026-07-26',
+          about: [
+            'HSTS supercookies',
+            'Favicon cache tracking',
+            'ETag tracking',
+            'localStorage tracking',
+          ],
+        })}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="PERSISTENT">
           <DocumentHeader
             title="Supercookies"
             subtitle="Tracking that survives everything you throw at it"
             classification="top-secret"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <nav className="mb-8 p-4 bg-paper-100 rounded-sm">

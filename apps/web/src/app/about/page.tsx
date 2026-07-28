@@ -6,30 +6,63 @@ import {
   DocumentSection,
   Stamp,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'About Panopticlick - Browser Fingerprinting Research',
   description:
-    'Learn about Panopticlick, a browser fingerprinting research project inspired by EFF\'s original work. We help users understand how they can be tracked online and protect their privacy.',
+    'Learn about Panopticlick, an independent browser fingerprinting research project inspired by EFF\'s original work. We help users understand how they can be tracked online and protect their privacy.',
   openGraph: {
     title: 'About Panopticlick',
     description:
-      'Browser fingerprinting research and privacy education project.',
+      'Independent browser fingerprinting research and privacy education project.',
     type: 'website',
     url: 'https://panopticlick.org/about/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/about/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function AboutPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'About', path: '/about/' },
+        ])}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Organization',
+          name: 'Panopticlick',
+          url: 'https://panopticlick.org',
+          description:
+            'Independent browser fingerprinting research and privacy education project. Not affiliated with the Electronic Frontier Foundation.',
+          email: 'hideme@panopticlick.org',
+          sameAs: ['https://github.com/Panopticlick/Panopticlick'],
+        }}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="DOSSIER">
           <DocumentHeader
             title="About Panopticlick"
             subtitle="Browser fingerprinting research and privacy education"
             classification="unclassified"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <article className="prose prose-lg max-w-none">
@@ -44,6 +77,12 @@ export default function AboutPage() {
                 Our goal is simple: <em>show you exactly what advertisers and trackers
                 see when you visit a website.</em> By understanding your digital fingerprint,
                 you can take steps to protect your privacy.
+              </p>
+              <p>
+                <strong>Panopticlick.org is an independent project. We are not affiliated
+                with, endorsed by, or connected to the Electronic Frontier Foundation
+                (EFF).</strong> The name honors EFF's pioneering 2010 research; their own
+                successor tool lives on as Cover Your Tracks.
               </p>
             </DocumentSection>
 
@@ -140,7 +179,7 @@ export default function AboutPage() {
               <div className="not-prose">
                 <div className="bg-ink text-paper p-4 rounded-sm font-mono text-sm">
                   <div className="text-paper-300 mb-2">// Tech Stack</div>
-                  <div><span className="text-highlight">Frontend:</span> Next.js 14+ (App Router)</div>
+                  <div><span className="text-highlight">Frontend:</span> Next.js 16 (App Router)</div>
                   <div><span className="text-highlight">API:</span> Cloudflare Workers (Hono.js)</div>
                   <div><span className="text-highlight">Database:</span> Cloudflare D1 + KV</div>
                   <div><span className="text-highlight">Fingerprinting:</span> Custom SDK</div>
@@ -171,6 +210,11 @@ export default function AboutPage() {
               <p>
                 We thank the privacy research community for their ongoing work to
                 understand and combat online tracking.
+              </p>
+              <p>
+                To be explicit: this site is a successor in spirit only. It is an
+                independent project, not affiliated with the EFF, and none of the
+                organizations above endorse it.
               </p>
             </DocumentSection>
 

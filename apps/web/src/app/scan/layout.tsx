@@ -18,12 +18,23 @@ export const metadata: Metadata = {
     title: 'Browser Fingerprint Scanner - Test Your Digital Identity',
     description:
       'Run a free browser fingerprint scan to discover your digital identity and advertising value.',
-    url: 'https://panopticlick.org/scan',
+    url: 'https://panopticlick.org/scan/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
   },
   twitter: {
     title: 'Browser Fingerprint Scanner - Test Your Digital Identity',
     description:
       'Run a free browser fingerprint scan to discover your digital identity and advertising value.',
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/scan/',
   },
 };
 

@@ -7,6 +7,7 @@ import {
   Stamp,
   Redacted,
 } from '@/components/ui';
+import { JsonLd, breadcrumbJsonLd, techArticleJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'Browser Fingerprinting Explained - Canvas, WebGL & Audio | Panopticlick',
@@ -17,19 +18,57 @@ export const metadata: Metadata = {
     description:
       'Canvas, WebGL, Audio fingerprinting explained. How 99.7% of browsers become uniquely identifiable.',
     type: 'article',
+    url: 'https://panopticlick.org/anatomy/fingerprinting/',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Panopticlick - Browser Privacy Test',
+      },
+    ],
+  },
+  alternates: {
+    canonical: 'https://panopticlick.org/anatomy/fingerprinting/',
   },
 };
+
+// Fixed content date shown on the document header; bump when content changes
+const CONTENT_DATE = new Date('2026-07-26');
 
 export default function FingerprintingPage() {
   return (
     <div className="bg-paper grid-bg">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Anatomy of Tracking', path: '/anatomy/' },
+          { name: 'Browser Fingerprinting', path: '/anatomy/fingerprinting/' },
+        ])}
+      />
+      <JsonLd
+        data={techArticleJsonLd({
+          headline: 'Browser Fingerprinting Explained: Canvas, WebGL & Audio',
+          description:
+            'Deep dive into browser fingerprinting techniques: Canvas fingerprinting, WebGL fingerprinting, AudioContext fingerprinting, and font enumeration.',
+          path: '/anatomy/fingerprinting/',
+          datePublished: '2025-12-10',
+          dateModified: '2026-07-26',
+          about: [
+            'Canvas fingerprinting',
+            'WebGL fingerprinting',
+            'AudioContext fingerprinting',
+            'Font enumeration',
+          ],
+        })}
+      />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Document variant="classified" watermark="FINGERPRINTS">
           <DocumentHeader
             title="Browser Fingerprinting"
             subtitle="How your browser becomes a unique identifier"
             classification="top-secret"
-            date={new Date()}
+            date={CONTENT_DATE}
           />
 
           <nav className="mb-8 p-4 bg-paper-100 rounded-sm">

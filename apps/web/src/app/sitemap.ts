@@ -1,12 +1,15 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/site';
 
 // Static export compatibility
 export const dynamic = 'force-static';
 export const revalidate = 86400; // 24h
 
+// Bump when site content meaningfully changes; a per-build `new Date()`
+// would fake freshness on every deploy.
+const LAST_MODIFIED = new Date('2026-07-26');
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://panopticlick.org';
-  const lastModified = new Date();
 
   const routes: Array<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }> = [
     { path: '/', priority: 1, changeFrequency: 'weekly' },
@@ -34,8 +37,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   return routes.map((route) => ({
-    url: `${baseUrl}${route.path}`,
-    lastModified,
+    url: `${SITE_URL}${route.path}`,
+    lastModified: LAST_MODIFIED,
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }));

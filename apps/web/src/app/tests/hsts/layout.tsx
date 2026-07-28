@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 
 export const metadata: Metadata = {
   title: 'HSTS Supercookie Demo - How Browsers Can Track You Forever',
@@ -77,6 +78,13 @@ export default function HSTSTestLayout({
             learningResourceType: 'Interactive Demo',
           }),
         }}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Privacy Tests', path: '/tests/' },
+          { name: 'HSTS Supercookie Demo', path: '/tests/hsts/' },
+        ])}
       />
     </>
   );
