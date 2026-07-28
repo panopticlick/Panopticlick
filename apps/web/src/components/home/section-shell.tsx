@@ -72,11 +72,11 @@ export function SectionShell({
           <LockedPanel summary={lockedSummary} />
         ) : (
           <motion.div
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-10%" }}
             transition={{
-              duration: reducedMotion ? 0.2 : 0.5,
+              duration: reducedMotion ? 0 : 0.5,
               ease: "easeOut",
             }}
           >

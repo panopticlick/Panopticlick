@@ -7,7 +7,7 @@ export const revalidate = 86400; // 24h
 
 // Bump when site content meaningfully changes; a per-build `new Date()`
 // would fake freshness on every deploy.
-const LAST_MODIFIED = new Date('2026-07-26');
+const LAST_MODIFIED = new Date('2026-07-28');
 
 export default function sitemap(): MetadataRoute.Sitemap {
 

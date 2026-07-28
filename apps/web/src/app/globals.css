@@ -248,6 +248,20 @@
   }
 }
 
+/* Accessibility baseline for CSS animations and transitions. Framer Motion
+   components also consult useReducedMotion, but this catches utility classes
+   such as animate-blink and any future CSS-only motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print {

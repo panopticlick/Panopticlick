@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -20,6 +20,9 @@ export default function BlockerTestPage() {
   const [progress, setProgress] = useState(0);
   const [currentTest, setCurrentTest] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => setHydrated(true), []);
 
   const runTest = useCallback(async () => {
     setPhase('testing');
@@ -58,24 +61,24 @@ export default function BlockerTestPage() {
       <div className="confidential-bar">Ad Blocker Analysis</div>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div data-panopticlick-probe-host hidden aria-hidden="true" />
+
         <nav className="mb-6 text-sm">
           <Link href="/tests/" className="text-ink-300 hover:text-ink">
             ← Back to Tests
           </Link>
         </nav>
 
-        <AnimatePresence mode="wait">
-          {phase === 'ready' && (
-            <motion.div
-              key="ready"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <ReadyPhase onStart={runTest} />
-            </motion.div>
-          )}
+        {phase === 'ready' && (
+          // Keep the statically exported hydration frame free of motion
+          // wrappers. The testing/results branches only mount after a client
+          // event, so their transitions cannot alter the server DOM.
+          <div>
+            <ReadyPhase onStart={runTest} hydrated={hydrated} />
+          </div>
+        )}
 
+        <AnimatePresence mode="wait" initial={false}>
           {phase === 'testing' && (
             <motion.div
               key="testing"
@@ -106,14 +109,19 @@ export default function BlockerTestPage() {
   );
 }
 
-function ReadyPhase({ onStart }: { onStart: () => void }) {
+function ReadyPhase({
+  onStart,
+  hydrated,
+}: {
+  onStart: () => void;
+  hydrated: boolean;
+}) {
   return (
     <Document variant="classified" watermark="BLOCKER TEST">
       <DocumentHeader
         title="Ad Blocker Effectiveness Test"
         subtitle="How well does your ad blocker protect you?"
         classification="confidential"
-        date={new Date()}
       />
 
       <div className="space-y-6">
@@ -234,8 +242,13 @@ function ReadyPhase({ onStart }: { onStart: () => void }) {
         </div>
 
         <div className="flex justify-center pt-4">
-          <Button variant="primary" size="lg" onClick={onStart}>
-            Start Blocker Test
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={onStart}
+            disabled={!hydrated}
+          >
+            {hydrated ? 'Start Blocker Test' : 'Preparing Test…'}
           </Button>
         </div>
       </div>
@@ -366,7 +379,6 @@ function ResultsPhase({
               ? 'confidential'
               : 'secret'
           }
-          date={new Date()}
         />
 
         {/* Overall Score */}

@@ -80,18 +80,35 @@ export class APIError extends Error {
     message: string,
     public code: string,
     public status: number,
-    public details?: unknown
+    public details?: unknown,
+    public retryAfterSeconds?: number
   ) {
     super(message);
     this.name = 'APIError';
   }
 
-  static fromResponse(response: Response, data?: { error?: string; code?: string }) {
+  static fromResponse(
+    response: Response,
+    data?: {
+      error?: string | { code?: string; message?: string };
+      code?: string;
+      message?: string;
+    }
+  ) {
+    const nestedError =
+      data?.error && typeof data.error === 'object' ? data.error : undefined;
+    const retryAfter = Number(response.headers.get('retry-after'));
+
     return new APIError(
-      data?.error || response.statusText || 'Unknown error',
-      data?.code || 'UNKNOWN_ERROR',
+      nestedError?.message ||
+        (typeof data?.error === 'string' ? data.error : undefined) ||
+        data?.message ||
+        response.statusText ||
+        'Unknown error',
+      nestedError?.code || data?.code || 'UNKNOWN_ERROR',
       response.status,
-      data
+      data,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
     );
   }
 }
@@ -493,6 +510,36 @@ export const api = {
       return apiRequest(`/v1/privacy/export/${sessionId}`, {
         method: 'POST',
         headers: sessionHeaders(sessionId),
+      });
+    },
+
+    /**
+     * Delete the current opted-in session after proving ownership with the
+     * token minted by /v1/scan/start. This intentionally does not create a
+     * fingerprint-wide permanent opt-out.
+     */
+    async deleteSession(sessionId: string): Promise<{
+      success: boolean;
+      deletedCount: { sessions: number; fingerprints: number };
+      permanentOptOut: boolean;
+      message: string;
+    }> {
+      const token = getSessionToken(sessionId);
+      if (!token) {
+        throw new APIError(
+          'The ownership token for this session is not available on this device.',
+          'SESSION_TOKEN_MISSING',
+          401
+        );
+      }
+
+      return apiRequest('/v1/privacy/opt-out', {
+        method: 'POST',
+        headers: { 'X-Session-Token': token },
+        body: JSON.stringify({
+          sessions: [{ id: sessionId, token }],
+          reason: 'Deleted from the case summary',
+        }),
       });
     },
   },

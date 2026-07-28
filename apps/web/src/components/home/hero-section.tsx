@@ -76,9 +76,12 @@ export function HeroSection() {
               <motion.div
                 key={stat.label}
                 className="rounded-sm border border-paper-300 p-4 text-center"
-                initial={reducedMotion ? false : { opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + index * 0.1 }}
+                transition={{
+                  duration: reducedMotion ? 0 : 0.3,
+                  delay: reducedMotion ? 0 : 0.2 + index * 0.1,
+                }}
               >
                 <div className="font-mono text-2xl font-bold">{stat.value}</div>
                 <div className="mt-1 text-xs uppercase tracking-wider text-ink-200">
@@ -90,9 +93,12 @@ export function HeroSection() {
 
           <motion.div
             className="py-6 text-center"
-            initial={reducedMotion ? false : { opacity: 0 }}
+            initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{
+              duration: reducedMotion ? 0 : 0.3,
+              delay: reducedMotion ? 0 : 0.5,
+            }}
           >
             <p className="mb-6 text-ink-200">
               {hasResult
@@ -105,13 +111,13 @@ export function HeroSection() {
             <StartScanButton onClick={() => scrollToSection("scan")} />
 
             <p className="mt-4 text-xs text-ink-300">
-              No data is stored without your explicit consent
+              Nothing is uploaded to Panopticlick servers without your explicit consent
             </p>
           </motion.div>
         </div>
       </Document>
 
-      <div className="mt-8 flex justify-center gap-8">
+      <div className="mt-8 flex flex-wrap justify-center gap-4 px-4 sm:gap-8">
         <Stamp variant="classified">Fingerprint Analysis</Stamp>
         <Stamp variant="verified">RTB Simulation</Stamp>
       </div>

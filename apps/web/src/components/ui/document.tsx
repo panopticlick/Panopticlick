@@ -30,7 +30,7 @@ export function Document({
   return (
     <div
       className={cn(
-        'document relative bg-paper border shadow-document rounded-sm p-6',
+        'document relative overflow-hidden bg-paper border shadow-document rounded-sm p-6',
         'paper-texture',
         variantStyles[variant],
         className
@@ -114,6 +114,7 @@ export function DocumentHeader({
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
+                timeZone: 'UTC',
               })}
             </div>
           )}

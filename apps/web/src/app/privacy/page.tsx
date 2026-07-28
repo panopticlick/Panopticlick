@@ -11,7 +11,7 @@ import { JsonLd, breadcrumbJsonLd } from '@/components/seo/json-ld';
 export const metadata: Metadata = {
   title: 'Privacy Policy - Panopticlick',
   description:
-    'Panopticlick privacy policy. Learn how we handle your data, what information we collect, and your rights under GDPR and CCPA.',
+    'Panopticlick privacy policy. Learn what stays in your browser, what optional scan storage includes, and how AI chat data is processed.',
   openGraph: {
     title: 'Privacy Policy - Panopticlick',
     description:
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  const lastUpdated = new Date('2024-12-01');
+  const lastUpdated = new Date('2026-07-28');
 
   return (
     <div className="bg-paper grid-bg">
@@ -59,9 +59,10 @@ export default function PrivacyPage() {
                 <div>
                   <h4 className="font-bold mb-1">TL;DR</h4>
                   <p className="text-sm text-ink-200">
-                    We don't track you. All analysis happens in your browser.
-                    We only store data if you explicitly choose to share it,
-                    and you can delete it anytime.
+                    Fingerprint collection and valuation run in your browser first.
+                    Scan data reaches Panopticlick servers only when you opt in, and
+                    the completed case can export or delete that server session.
+                    AI chat is a separate, user-triggered feature described below.
                   </p>
                 </div>
               </div>
@@ -85,9 +86,10 @@ export default function PrivacyPage() {
             <DocumentSection title="2. Information We Collect">
               <h4>2.1 Information Collected Automatically</h4>
               <p>
-                By default, we do <strong>not</strong> collect any personal information.
-                Our fingerprint analysis runs entirely in your browser (client-side).
-                No data is transmitted to our servers unless you explicitly choose to share it.
+                By default, fingerprint collection and valuation run in your browser.
+                The local report may be saved in this browser&apos;s local storage so it
+                can be reopened on a later visit. It is not uploaded to Panopticlick
+                servers unless you explicitly opt in to server storage.
               </p>
 
               <h4>2.2 Information You Choose to Share</h4>
@@ -98,23 +100,25 @@ export default function PrivacyPage() {
                 <li>Your browser fingerprint (technical configuration data)</li>
                 <li>A randomly generated session ID</li>
                 <li>Timestamp of your scan</li>
-                <li>Aggregated, non-identifying statistics</li>
+                <li>A salted hash derived from the request IP address (never the raw IP)</li>
+                <li>Derived country, ASN, proxy, and VPN network signals</li>
+                <li>Pseudonymous aggregate statistics</li>
               </ul>
               <p>
                 We do <strong>not</strong> collect:
               </p>
               <ul>
-                <li>Your IP address</li>
+                <li>Your raw IP address in D1 scan records</li>
                 <li>Your name or email address</li>
                 <li>Cookies or tracking identifiers</li>
                 <li>Browsing history</li>
-                <li>Location data beyond timezone</li>
+                <li>Precise GPS location</li>
               </ul>
             </DocumentSection>
 
             <DocumentSection title="3. How We Use Information">
               <p>
-                If you choose to share your fingerprint data, we use it solely for:
+                If you choose to store your fingerprint data, we use it for:
               </p>
               <ul>
                 <li>
@@ -128,6 +132,10 @@ export default function PrivacyPage() {
                 <li>
                   <strong>Education:</strong> Providing comparative data to help users
                   understand their privacy
+                </li>
+                <li>
+                  <strong>Case delivery:</strong> Returning network context and an
+                  authenticated export for the opted-in session
                 </li>
               </ul>
               <p>
@@ -202,20 +210,34 @@ export default function PrivacyPage() {
                 <li>Social media trackers</li>
               </ul>
               <p>
-                We may use local storage solely to remember your session ID if you
-                chose to share data, so you can access it later.
+                We use local storage for the consent preference, the most recent local
+                report and dossier, and—when a scan is stored—the session ownership
+                token needed for export or deletion. These values support site
+                functionality and are not used for cross-site tracking. Choosing
+                &ldquo;Scan again&rdquo; clears the saved case and token from this browser.
               </p>
             </DocumentSection>
 
             <DocumentSection title="7. Third-Party Services">
               <p>
                 Our website is hosted on Cloudflare Pages. Cloudflare may collect
-                basic analytics (page views, countries) in aggregated form. We have
-                disabled detailed analytics and logging.
+                operational request data under its own service terms. Panopticlick
+                minimizes application logs and does not run third-party advertising or
+                audience analytics scripts.
               </p>
               <p>
-                We do not embed any third-party content, widgets, or scripts that
-                could track you.
+                If you choose to send a question to the analysis agent, the current
+                chat transcript and a compact case context (such as entropy, modeled
+                CPM, defense score, personas, and uniqueness) are sent through our
+                Worker to OpenRouter so it can produce the answer. This happens only
+                after you submit a chat question, but it is separate from the scan
+                storage choice. Do not include names, contact details, or other
+                sensitive information in chat. Upstream processing and retention are
+                governed by OpenRouter and the model provider it selects.
+              </p>
+              <p>
+                We do not embed third-party content, widgets, or scripts that track
+                browsing across sites.
               </p>
             </DocumentSection>
 
@@ -234,9 +256,9 @@ export default function PrivacyPage() {
                 this policy.
               </p>
               <p>
-                For EU users: We operate under the legitimate interest legal basis for
-                any optional data collection (privacy research). You can withdraw
-                consent at any time.
+                Optional server storage is based on your explicit choice and can be
+                withdrawn by deleting the authenticated server copy from the completed
+                case summary.
               </p>
             </DocumentSection>
 
@@ -259,23 +281,20 @@ export default function PrivacyPage() {
               </div>
             </DocumentSection>
 
-            <DocumentSection title="12. Legal Compliance">
+            <DocumentSection title="12. Privacy Controls and Limitations">
               <p>
-                This privacy policy is designed to comply with:
+                The site provides local-first processing, optional server storage,
+                authenticated export, and deletion controls intended to support
+                privacy rights requests. This policy describes the implemented
+                behavior; it is not a certification or a substitute for legal advice.
               </p>
-              <ul>
-                <li>General Data Protection Regulation (GDPR)</li>
-                <li>California Consumer Privacy Act (CCPA)</li>
-                <li>California Privacy Rights Act (CPRA)</li>
-                <li>Other applicable privacy laws</li>
-              </ul>
             </DocumentSection>
           </article>
         </Document>
 
         <div className="flex justify-center gap-6 mt-8">
-          <Stamp variant="verified">GDPR Compliant</Stamp>
-          <Stamp variant="verified">CCPA Compliant</Stamp>
+          <Stamp variant="verified">Local-first</Stamp>
+          <Stamp variant="verified">Export + Delete</Stamp>
         </div>
 
         <div className="mt-8 text-center">

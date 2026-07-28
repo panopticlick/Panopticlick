@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Button, Document, DocumentHeader, Stamp } from "@/components/ui";
 import { ConsentGate } from "@/components/scan/consent-gate";
@@ -70,9 +70,10 @@ export function ScanSection() {
             {phase === "idle" && (
               <motion.div
                 key="gate"
-                initial={reducedMotion ? false : { opacity: 0 }}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.2 }}
               >
                 <DocumentHeader
                   as="h3"
@@ -87,9 +88,10 @@ export function ScanSection() {
             {(phase === "scanning" || phase === "analyzing") && (
               <motion.div
                 key="progress"
-                initial={reducedMotion ? false : { opacity: 0 }}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.2 }}
               >
                 <ScanProgress />
               </motion.div>
@@ -112,11 +114,14 @@ function CaseSummary() {
     source,
     restoredAt,
     exporting,
+    deleting,
     reset,
     downloadReport,
     exportFromServer,
+    deleteFromServer,
   } = useScanContext();
   const reducedMotion = useReducedMotion();
+  const [privacyNotice, setPrivacyNotice] = useState("");
 
   if (!report) return null;
 
@@ -140,9 +145,10 @@ function CaseSummary() {
 
   return (
     <motion.div
-      initial={reducedMotion ? false : { opacity: 0 }}
+      initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: reducedMotion ? 0 : 0.2 }}
       className="space-y-6"
     >
       <DocumentHeader
@@ -174,14 +180,26 @@ function CaseSummary() {
         </p>
       )}
 
+      {privacyNotice && (
+        <p
+          role="status"
+          className="rounded-sm border border-alert-green/40 bg-alert-green/10 p-3 text-sm text-alert-green"
+        >
+          {privacyNotice}
+        </p>
+      )}
+
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat, index) => (
           <motion.div
             key={stat.label}
             className="rounded-sm border border-paper-300 p-4"
-            initial={reducedMotion ? false : { opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * index }}
+            transition={{
+              duration: reducedMotion ? 0 : 0.3,
+              delay: reducedMotion ? 0 : 0.1 * index,
+            }}
           >
             <div className="mb-1 text-xs uppercase tracking-wider text-ink-300">
               {stat.label}
@@ -219,6 +237,28 @@ function CaseSummary() {
             onClick={exportFromServer}
           >
             {exporting ? "Exporting…" : "Export from server"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={apiStatus !== "synced" || deleting}
+            onClick={() => {
+              if (
+                !window.confirm(
+                  "Delete this opted-in session from Panopticlick servers? Your local report will remain on this device."
+                )
+              ) {
+                return;
+              }
+              void deleteFromServer().then((deleted) => {
+                if (deleted) {
+                  setPrivacyNotice(
+                    "The server copy was deleted. This report now remains only on this device."
+                  );
+                }
+              });
+            }}
+          >
+            {deleting ? "Deleting…" : "Delete server copy"}
           </Button>
           <Button variant="ghost" onClick={reset}>
             Scan again

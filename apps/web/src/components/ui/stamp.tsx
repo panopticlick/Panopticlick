@@ -1,6 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 type StampVariant = 'classified' | 'verified' | 'exposed' | 'protected' | 'denied' | 'custom';
@@ -39,7 +40,16 @@ export function Stamp({
   animated = true,
   size = 'md',
 }: StampProps) {
-  const Component = animated ? motion.div : 'div';
+  const reducedMotion = useReducedMotion();
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+
+  // Match the static HTML and the first client render, then opt into motion
+  // after hydration only when the media query explicitly permits it.
+  useEffect(() => {
+    setShouldAnimate(animated && reducedMotion === false);
+  }, [animated, reducedMotion]);
+
+  const Component = shouldAnimate ? motion.div : 'div';
 
   return (
     <Component
@@ -50,7 +60,7 @@ export function Stamp({
         variantStyles[variant],
         className
       )}
-      {...(animated
+      {...(shouldAnimate
         ? {
             initial: { scale: 2, rotate: -15, opacity: 0 },
             animate: { scale: 1, rotate: -5, opacity: 1 },
@@ -80,14 +90,19 @@ export function StampGroup({
   className,
   staggerDelay = 0.2,
 }: StampGroupProps) {
+  const reducedMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const shouldAnimate = mounted && reducedMotion === false;
+
   return (
     <div className={cn('flex flex-wrap gap-4', className)}>
       {stamps.map((stamp, index) => (
         <motion.div
           key={index}
-          initial={{ scale: 0, opacity: 0 }}
+          initial={shouldAnimate ? { scale: 0, opacity: 0 } : false}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: index * staggerDelay }}
+          transition={{ delay: shouldAnimate ? index * staggerDelay : 0 }}
         >
           <Stamp variant={stamp.variant} animated={false}>
             {stamp.text}
@@ -112,10 +127,12 @@ export function DateStamp({ date, className }: DateStampProps) {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    timeZone: 'UTC',
   });
   const time = d.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'UTC',
   });
 
   return (

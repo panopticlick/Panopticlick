@@ -42,7 +42,7 @@ export const metadata: Metadata = {
 };
 
 // Fixed content date shown on the document header; bump when content changes
-const CONTENT_DATE = new Date('2026-07-26');
+const CONTENT_DATE = new Date('2026-07-28');
 
 export default function MethodologyPage() {
   return (
@@ -60,13 +60,13 @@ export default function MethodologyPage() {
             'Methodology for Shannon-entropy fingerprint uniqueness scores and modeled RTB advertising valuations, including data sources and known limitations.',
           path: '/methodology/',
           datePublished: '2025-11-30',
-          dateModified: '2026-07-26',
+          dateModified: '2026-07-28',
           about: ['Browser fingerprinting', 'Shannon entropy', 'Real-time bidding'],
           citations: [
-            'Eckersley, P. (2010). How Unique Is Your Web Browser? Privacy Enhancing Technologies Symposium. (EFF Panopticlick)',
-            'Laperdrix, P., Rudametkin, W., & Baudry, B. (2016). Beauty and the Beast: Diverting Modern Web Browsers to Build Unique Browser Fingerprints. IEEE Symposium on Security and Privacy. (INRIA AmIUnique)',
-            'Mowery, K., & Shacham, H. (2012). Pixel Perfect: Fingerprinting Canvas in HTML5. W2SP.',
-            'Englehardt, S., & Narayanan, A. (2016). Online Tracking: A 1-million-site Measurement and Analysis. ACM CCS. (Princeton WebTAP)',
+            'https://doi.org/10.1007/978-3-642-14527-8_1',
+            'https://doi.org/10.1109/SP.2016.57',
+            'https://hovav.net/ucsd/papers/ms12.html',
+            'https://doi.org/10.1145/2976749.2978313',
           ],
         })}
       />
@@ -378,21 +378,35 @@ export default function MethodologyPage() {
               </p>
               <ul>
                 <li>
-                  Eckersley, P. (2010). "How Unique Is Your Web Browser?"
-                  <em> Proceedings of the Privacy Enhancing Technologies Symposium</em>
+                  Eckersley, P. (2010).{' '}
+                  <a href="https://doi.org/10.1007/978-3-642-14527-8_1">
+                    &ldquo;How Unique Is Your Web Browser?&rdquo;
+                  </a>
+                  <em> Proceedings of the Privacy Enhancing Technologies Symposium</em>.
+                  DOI: 10.1007/978-3-642-14527-8_1
                 </li>
                 <li>
-                  Laperdrix, P., et al. (2016). "Beauty and the Beast: Diverting modern
-                  web browsers to build unique browser fingerprints."
-                  <em> IEEE Symposium on Security and Privacy</em>
+                  Laperdrix, P., et al. (2016).{' '}
+                  <a href="https://doi.org/10.1109/SP.2016.57">
+                    &ldquo;Beauty and the Beast: Diverting modern web browsers to build
+                    unique browser fingerprints.&rdquo;
+                  </a>
+                  <em> IEEE Symposium on Security and Privacy</em>. DOI: 10.1109/SP.2016.57
                 </li>
                 <li>
-                  Mowery, K. & Shacham, H. (2012). "Pixel Perfect: Fingerprinting Canvas
-                  in HTML5." <em>W2SP</em>
+                  Mowery, K. &amp; Shacham, H. (2012).{' '}
+                  <a href="https://hovav.net/ucsd/papers/ms12.html">
+                    &ldquo;Pixel Perfect: Fingerprinting Canvas in HTML5.&rdquo;
+                  </a>{' '}
+                  <em>W2SP</em>
                 </li>
                 <li>
-                  Englehardt, S. & Narayanan, A. (2016). "Online Tracking: A 1-million-site
-                  Measurement and Analysis." <em>ACM CCS</em>
+                  Englehardt, S. &amp; Narayanan, A. (2016).{' '}
+                  <a href="https://doi.org/10.1145/2976749.2978313">
+                    &ldquo;Online Tracking: A 1-million-site Measurement and
+                    Analysis.&rdquo;
+                  </a>{' '}
+                  <em>ACM CCS</em>. DOI: 10.1145/2976749.2978313
                 </li>
               </ul>
             </DocumentSection>

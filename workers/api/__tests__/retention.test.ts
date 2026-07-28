@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createMockD1 } from './helpers/mock-env';
 import { RETENTION_STATEMENTS, runRetention } from '../src/services/retention';
+import { scheduled } from '../src';
+import type { Env } from '../src/types';
 
 describe('runRetention', () => {
   it('enforces the published 30/90/7 day windows', async () => {
@@ -22,5 +24,17 @@ describe('runRetention', () => {
       "DELETE FROM fingerprints WHERE last_seen < datetime('now', '-90 days')",
       "DELETE FROM hsts_cookies WHERE created_at < datetime('now', '-7 days')",
     ]);
+  });
+
+  it('wires the Worker scheduled entry point to the same retention job', async () => {
+    const db = createMockD1();
+
+    await scheduled(
+      {} as ScheduledController,
+      { DB: db as unknown as D1Database } as Env,
+      {} as ExecutionContext
+    );
+
+    expect(db.sqlLog()).toEqual(RETENTION_STATEMENTS.map(({ sql }) => sql));
   });
 });

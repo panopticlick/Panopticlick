@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Document, DocumentHeader, Stamp, Button } from '@/components/ui';
 
 export default function Error({
@@ -10,6 +11,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Application error:', error);
@@ -48,7 +51,7 @@ export default function Error({
             </Button>
             <Button
               variant="outline"
-              onClick={() => (window.location.href = '/')}
+              onClick={() => router.push('/')}
             >
               Go Home
             </Button>

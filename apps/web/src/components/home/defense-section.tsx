@@ -109,7 +109,7 @@ export function DefenseSection() {
             >
               <motion.div
                 className={`h-full ${scoreTone}`}
-                initial={reducedMotion ? false : { width: 0 }}
+                initial={{ width: 0 }}
                 whileInView={{ width: `${score}%` }}
                 viewport={{ once: true }}
                 transition={{

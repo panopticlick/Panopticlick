@@ -162,8 +162,9 @@ export default function AboutPage() {
                   to share it.
                 </li>
                 <li>
-                  <strong>Data ownership</strong> — If you do share data, you can view, export,
-                  or delete it at any time through our GDPR/CCPA compliant privacy controls.
+                  <strong>Data ownership</strong> — If you do share a scan, its case summary
+                  can export or delete that authenticated server session. Local reports can
+                  be cleared with &ldquo;Scan again.&rdquo;
                 </li>
                 <li>
                   <strong>Open source</strong> — Our methodology is transparent. You can review

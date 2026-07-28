@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { PrivacyChoicesButton } from '@/components/consent-banner';
 
 export function Footer() {
-  const currentYear = new Date().getFullYear();
+  // Static export: keep server and client markup identical even when an old
+  // build is first opened just after New Year.
+  const currentYear = 2026;
 
   return (
     <footer className="bg-ink text-paper py-8 mt-auto">

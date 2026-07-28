@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface RedactedProps {
@@ -27,6 +27,7 @@ export function Redacted({
 }: RedactedProps) {
   const [internalRevealed, setInternalRevealed] = useState(false);
   const isRevealed = controlledRevealed ?? internalRevealed;
+  const reducedMotion = useReducedMotion();
 
   const handleClick = useCallback(() => {
     if (!isRevealed) {
@@ -48,18 +49,23 @@ export function Redacted({
         autoReveal
           ? {
               opacity: 1,
-              transition: { delay: revealDelay / 1000 },
+              transition: {
+                duration: reducedMotion ? 0 : 0.3,
+                delay: reducedMotion ? 0 : revealDelay / 1000,
+              },
             }
           : {}
       }
-      whileHover={!isRevealed ? { scale: 1.02 } : {}}
+      whileHover={!isRevealed && !reducedMotion ? { scale: 1.02 } : {}}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
           handleClick();
         }
       }}
+      aria-pressed={isRevealed}
       aria-label={isRevealed ? undefined : 'Click to reveal redacted content'}
     >
       <AnimatePresence mode="wait">
@@ -68,7 +74,7 @@ export function Redacted({
             key="revealed"
             initial={{ opacity: 0, clipPath: 'inset(0 100% 0 0)' }}
             animate={{ opacity: 1, clipPath: 'inset(0 0 0 0)' }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            transition={{ duration: reducedMotion ? 0 : 0.5, ease: 'easeOut' }}
             className="text-ink px-1"
           >
             {children}
@@ -107,6 +113,7 @@ export function RedactedBlock({
 }: RedactedBlockProps) {
   const [internalRevealed, setInternalRevealed] = useState(false);
   const isRevealed = controlledRevealed ?? internalRevealed;
+  const reducedMotion = useReducedMotion();
 
   const handleClick = useCallback(() => {
     if (!isRevealed) {
@@ -126,9 +133,12 @@ export function RedactedBlock({
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
           handleClick();
         }
       }}
+      aria-pressed={isRevealed}
+      aria-label={isRevealed ? 'Revealed content' : 'Reveal redacted content'}
     >
       <AnimatePresence mode="wait">
         {isRevealed ? (
@@ -136,7 +146,7 @@ export function RedactedBlock({
             key="revealed"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: reducedMotion ? 0 : 0.5 }}
           >
             {children}
           </motion.div>
@@ -176,6 +186,7 @@ export function StaggeredReveal({
   className,
 }: StaggeredRevealProps) {
   const [revealedCount, setRevealedCount] = useState(0);
+  const reducedMotion = useReducedMotion();
 
   return (
     <div className={cn('space-y-1', className)}>
@@ -187,11 +198,11 @@ export function StaggeredReveal({
             if (index === revealedCount) {
               setTimeout(() => {
                 setRevealedCount((c) => c + 1);
-              }, delayBetween);
+              }, reducedMotion ? 0 : delayBetween);
             }
           }}
           autoReveal={index === 0}
-          revealDelay={index * delayBetween}
+          revealDelay={reducedMotion ? 0 : index * delayBetween}
         >
           {item}
         </Redacted>

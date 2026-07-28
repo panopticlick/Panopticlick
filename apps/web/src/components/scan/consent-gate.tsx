@@ -49,10 +49,10 @@ export function ConsentGate() {
       <div className="rounded-sm bg-paper-200 p-4">
         <h3 className="mb-2 font-serif font-bold">Privacy commitment</h3>
         <ul className="space-y-1 text-sm text-ink-200">
-          <li>• No personal information is collected</li>
+          <li>• No name, email, browsing history, or raw IP is stored by the scan</li>
           <li>• Data is processed on your device by default</li>
-          <li>• You control whether anything is stored</li>
-          <li>• You can export or delete stored data at any time</li>
+          <li>• You control whether a server copy is stored</li>
+          <li>• The completed case can export or delete its authenticated server copy</li>
         </ul>
       </div>
 

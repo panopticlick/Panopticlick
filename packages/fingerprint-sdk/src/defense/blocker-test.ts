@@ -285,7 +285,15 @@ async function testScript(
       finish(control ? 'inconclusive' : 'blocked', control ? 'control-error' : 'error');
     };
 
-    document.head.appendChild(script);
+    // Prefer a page-owned, already-hydrated probe host. Injecting transient
+    // scripts into <head> can race Next.js metadata hydration and produce a
+    // false React hydration error even though the blocker measurement itself
+    // is correct. Standalone SDK consumers keep the head fallback.
+    const probeHost =
+      typeof document.querySelector === 'function'
+        ? document.querySelector<HTMLElement>('[data-panopticlick-probe-host]')
+        : null;
+    (probeHost ?? document.head).appendChild(script);
   });
 }
 

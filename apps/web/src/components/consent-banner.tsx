@@ -46,13 +46,14 @@ export function ConsentBanner() {
               Privacy choices
             </p>
             <h2 id={titleId} className="mt-1 font-serif text-lg font-bold text-ink">
-              No data is stored without consent.
+              No scan data is uploaded without consent.
             </h2>
             <p id={descriptionId} className="mt-1 text-sm leading-relaxed text-ink-200">
               The default is <span className="font-mono text-xs uppercase">local-only</span>.
-              Choose <strong>Store my results</strong> to let Panopticlick keep only
-              anonymized scan evidence and aggregate statistics for your report. You can
-              change this later from the footer.{' '}
+              A local report may be saved in this browser so you can reopen it. Choose{' '}
+              <strong>Store my results</strong> to also let Panopticlick keep
+              pseudonymous scan evidence and aggregate statistics on its servers. You
+              can change the default for future scans from the footer.{' '}
               <Link href="/privacy/" className="marker-link text-sm">
                 Privacy policy
               </Link>

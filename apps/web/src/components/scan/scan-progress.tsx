@@ -57,9 +57,9 @@ export function ScanProgress() {
           {evidence.map((line) => (
             <motion.div
               key={line.id}
-              initial={reducedMotion ? false : { opacity: 0, x: -8 }}
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: reducedMotion ? 0 : 0.2 }}
               className="flex justify-between gap-4"
             >
               <span>

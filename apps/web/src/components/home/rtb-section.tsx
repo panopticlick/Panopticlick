@@ -57,11 +57,11 @@ export function RtbSection() {
             return (
               <motion.li
                 key={`${bid.bidder}-${bid.interest}`}
-                initial={reducedMotion ? false : { opacity: 0, x: -24 }}
+                initial={{ opacity: 0, x: -24 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, amount: 0.6 }}
                 transition={{
-                  duration: 0.28,
+                  duration: reducedMotion ? 0 : 0.28,
                   delay: reducedMotion ? 0 : index * 0.12,
                 }}
                 className={won ? "bg-alert-green/15 px-4 py-4" : "px-4 py-4"}

@@ -15,16 +15,29 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/api/'],
       },
       {
-        // AI crawlers (training + answer engines) are explicitly welcome
+        // Search/discovery crawlers. Network-layer bot policy must also allow
+        // these UAs; robots.txt alone cannot override a Cloudflare 403.
+        userAgent: [
+          'OAI-SearchBot',
+          'Claude-Web',
+          'PerplexityBot',
+        ],
+        allow: '/',
+      },
+      {
+        // User-triggered fetchers are not automatic indexing crawlers.
+        userAgent: [
+          'ChatGPT-User',
+          'Perplexity-User',
+        ],
+        allow: '/',
+      },
+      {
+        // Training is a separate policy decision from search inclusion.
         userAgent: [
           'GPTBot',
-          'OAI-SearchBot',
-          'ChatGPT-User',
           'ClaudeBot',
-          'Claude-Web',
           'anthropic-ai',
-          'PerplexityBot',
-          'Perplexity-User',
           'Google-Extended',
           'CCBot',
         ],

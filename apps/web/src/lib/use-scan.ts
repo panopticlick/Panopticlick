@@ -14,7 +14,7 @@ import type {
   NetworkIntelligence,
   ValuationReport,
 } from '@panopticlick/types';
-import { api } from './api-client';
+import { api, clearSessionToken } from './api-client';
 import {
   consentAllowsStorage,
   getConsent,
@@ -57,12 +57,14 @@ export interface ScanController {
   restoredAt: number | null;
   hasResult: boolean;
   exporting: boolean;
+  deleting: boolean;
   exportUrl: string | null;
   setStoreData: (value: boolean) => void;
   startScan: () => void;
   reset: () => void;
   downloadReport: () => void;
   exportFromServer: () => void;
+  deleteFromServer: () => Promise<boolean>;
 }
 
 const STORAGE_KEY = 'panopticlick:lastScan';
@@ -111,6 +113,15 @@ function writeStoredScan(entry: Omit<StoredScan, 'version' | 'savedAt'>): void {
   }
 }
 
+function clearStoredScan(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Nothing to clean up
+  }
+}
+
 function triggerDownload(blobUrl: string, filename: string): void {
   const anchor = document.createElement('a');
   anchor.href = blobUrl;
@@ -136,6 +147,7 @@ export function useScan(): ScanController {
   const [source, setSource] = useState<ScanSource | null>(null);
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [exportUrl, setExportUrl] = useState<string | null>(null);
 
   const running = useRef(false);
@@ -267,6 +279,9 @@ export function useScan(): ScanController {
   }, [storeData]);
 
   const reset = useCallback(() => {
+    clearStoredScan();
+    clearSessionToken();
+    running.current = false;
     setPhase('idle');
     setProgress(0);
     setCurrentStep('');
@@ -279,6 +294,8 @@ export function useScan(): ScanController {
     setError(null);
     setSource(null);
     setRestoredAt(null);
+    setExporting(false);
+    setDeleting(false);
     setExportUrl(null);
   }, []);
 
@@ -330,6 +347,39 @@ export function useScan(): ScanController {
       .finally(() => setExporting(false));
   }, [sessionId, apiStatus, exporting]);
 
+  const deleteFromServer = useCallback(async (): Promise<boolean> => {
+    if (!sessionId || apiStatus !== 'synced' || deleting) return false;
+
+    setDeleting(true);
+    setError(null);
+
+    try {
+      await api.privacy.deleteSession(sessionId);
+      clearSessionToken();
+      setSessionId(null);
+      setApiStatus('local-only');
+      setExportUrl(null);
+
+      if (report) {
+        writeStoredScan({
+          sessionId: null,
+          apiStatus: 'local-only',
+          report,
+          dossier,
+          network,
+        });
+      }
+
+      return true;
+    } catch (deleteError) {
+      console.error('[scan] server deletion failed', deleteError);
+      setError('Server deletion failed. Please try again later.');
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  }, [sessionId, apiStatus, deleting, report, dossier, network]);
+
   return {
     phase,
     progress,
@@ -347,11 +397,13 @@ export function useScan(): ScanController {
     restoredAt,
     hasResult: phase === 'complete' && report !== null,
     exporting,
+    deleting,
     exportUrl,
     setStoreData,
     startScan,
     reset,
     downloadReport,
     exportFromServer,
+    deleteFromServer,
   };
 }

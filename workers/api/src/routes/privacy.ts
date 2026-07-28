@@ -246,7 +246,7 @@ privacy.get('/my-data', async (c) => {
           fingerprintCount: counts?.fingerprint_count ?? 0,
           exportedAt: new Date().toISOString(),
           note:
-            'Counts for your current IP address only. Records are shared by everyone behind the same network address, so add ?fingerprintHash=<hash from your scan report> to export the rows that are yours.',
+            'Counts for your current IP address only. Records are shared by everyone behind the same network address. A detailed export requires sessionId and fingerprintHash together, plus the X-Session-Token issued for that session.',
         },
       };
 
@@ -321,8 +321,8 @@ privacy.get('/my-data', async (c) => {
  */
 privacy.get('/policy', async (c) => {
   return c.json({
-    version: '1.0',
-    lastUpdated: '2024-01-01',
+    version: '2.0',
+    lastUpdated: '2026-07-28',
     summary: {
       dataCollected: [
         'Browser fingerprint (with consent)',
@@ -331,20 +331,20 @@ privacy.get('/policy', async (c) => {
         'Entropy and valuation metrics',
       ],
       dataNotCollected: [
-        'Personal identification information',
-        'Cookies (except for session management)',
+        'Names or account profiles in the scan flow',
+        'Raw IP addresses in D1 scan records',
+        'Tracking cookies',
         'Browsing history',
-        'Form submissions',
       ],
       retention: {
         sessions: '30 days',
         fingerprints: '90 days (aggregated)',
-        analytics: 'Indefinitely (anonymized)',
+        temporaryDemonstrationData: '7 days',
       },
       rights: [
-        'Access your data (GET /privacy/my-data)',
-        'Delete your data (POST /privacy/opt-out)',
-        'Withdraw consent at any time',
+        'Access a session with its ownership token',
+        'Delete a session with its ownership token',
+        'Withdraw optional server storage from the completed case summary',
       ],
     },
     fullPolicyUrl: 'https://panopticlick.org/privacy',

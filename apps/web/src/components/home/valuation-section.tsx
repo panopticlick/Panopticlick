@@ -1,7 +1,15 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import {
+  animate,
+  motion,
+  useInView,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "framer-motion";
 import { Stamp } from "@/components/ui";
 import { useScanContext } from "@/components/scan/scan-provider";
 import { formatCPM } from "@/lib/utils";
@@ -15,10 +23,30 @@ export function ValuationSection() {
   const { hasResult, report } = useScanContext();
   const reducedMotion = useReducedMotion();
   const targetCPM = report?.valuation.averageCPM ?? 0;
+  const counterRef = useRef<HTMLParagraphElement>(null);
+  const counterInView = useInView(counterRef, { once: true, amount: 0.6 });
+  const counter = useMotionValue(0);
+  const displayedCPM = useTransform(counter, (value) => `$${value.toFixed(2)}`);
 
   const valuation = report?.valuation;
   const perImpression = (valuation?.averageCPM ?? 0) / 1000;
   const annualValue = valuation?.annualValue ?? 0;
+
+  useEffect(() => {
+    counter.set(0);
+    if (!hasResult || !counterInView) return;
+
+    if (reducedMotion) {
+      counter.set(targetCPM);
+      return;
+    }
+
+    const controls = animate(counter, targetCPM, {
+      duration: 1.1,
+      ease: "easeOut",
+    });
+    return () => controls.stop();
+  }, [counter, counterInView, hasResult, reducedMotion, targetCPM]);
 
   return (
     <SectionShell
@@ -35,13 +63,19 @@ export function ValuationSection() {
             Average modeled clearing value
           </p>
           <motion.p
-            aria-live="polite"
+            ref={counterRef}
+            aria-label={`Average modeled clearing value: $${targetCPM.toFixed(2)} per 1,000 impressions`}
             className="mt-4 font-mono text-5xl font-bold tracking-tight text-highlight sm:text-6xl"
-            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 8 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: reducedMotion ? 0 : 0.3 }}
           >
-            ${targetCPM.toFixed(2)}
+            {reducedMotion ? (
+              <span aria-hidden="true">${targetCPM.toFixed(2)}</span>
+            ) : (
+              <motion.span aria-hidden="true">{displayedCPM}</motion.span>
+            )}
           </motion.p>
           <p className="mt-2 font-mono text-sm uppercase tracking-wider text-paper-300">
             per 1,000 modeled impressions

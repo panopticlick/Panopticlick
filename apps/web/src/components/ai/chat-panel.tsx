@@ -6,6 +6,7 @@ import { AlertTriangle, Loader2, RotateCcw, Send } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import ReactMarkdown from 'react-markdown';
 import {
+  APIError,
   api,
   type AIChatContext,
   type AIChatMessage,
@@ -98,8 +99,23 @@ export function ChatPanel({
         ]);
       } catch (requestError) {
         console.error('[chat] request failed', requestError);
-        setError('The line to the analysis desk dropped. Your question is still on the record.');
-        setFailedRequest({ conversation, question });
+        if (requestError instanceof APIError && requestError.status === 429) {
+          const wait = requestError.retryAfterSeconds;
+          setError(
+            wait
+              ? `The analysis desk is rate-limited. Try again in about ${wait} seconds.`
+              : 'The analysis desk is rate-limited. Wait a minute before trying again.'
+          );
+          // An immediate retry would predictably fail and consume another
+          // request, so keep the question in the transcript without a retry
+          // control until the visitor submits again later.
+          setFailedRequest(null);
+        } else {
+          setError(
+            'The line to the analysis desk dropped. Your question is still on the record.'
+          );
+          setFailedRequest({ conversation, question });
+        }
       } finally {
         requestPending.current = false;
         setThinking(false);
@@ -159,7 +175,7 @@ export function ChatPanel({
         {messages.map((message) => (
           <motion.div
             key={message.id}
-            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.2 }}
             className="text-sm leading-relaxed"
@@ -181,6 +197,9 @@ export function ChatPanel({
                         {children}
                       </a>
                     ),
+                    // The page owns its document outline. Model-authored
+                    // Markdown must not introduce a second H1.
+                    h1: ({ children }) => <h3>{children}</h3>,
                   }}
                 >
                   {message.content}
@@ -194,7 +213,10 @@ export function ChatPanel({
 
         {thinking && (
           <div role="status" className="flex items-center gap-2 font-mono text-xs text-ink-300">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            <Loader2
+              className={cn('h-3.5 w-3.5', !reducedMotion && 'animate-spin')}
+              aria-hidden="true"
+            />
             The agent is consulting the file…
           </div>
         )}
