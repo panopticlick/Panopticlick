@@ -83,12 +83,12 @@ export function EvidenceCabinet() {
           </ul>
         </nav>
 
-        <article className="prose prose-lg mt-12 max-w-none">
-          <h2 className="font-serif text-3xl font-bold">
+        <article className="evidence-notes">
+          <h2>
             Your Browser Is a Witness That Never Stops Talking
           </h2>
 
-          <p className="text-xl leading-relaxed">
+          <p className="evidence-notes-lead">
             Clearing cookies can remove one kind of identifier, but it does not
             make every browser look the same. A site can still observe the
             language you prefer, the timezone your clock reports, the dimensions
@@ -119,8 +119,8 @@ export function EvidenceCabinet() {
             returning browser with varying levels of confidence.
           </p>
 
-          <div className="not-prose my-10 overflow-x-auto border-y-2 border-ink py-4">
-            <table className="w-full min-w-[42rem] text-left text-sm">
+          <div className="evidence-exhibits">
+            <table className="w-full text-left">
               <caption className="mb-3 text-left font-mono text-xs uppercase tracking-widest text-ink-300">
                 Common fingerprint exhibits
               </caption>
@@ -133,47 +133,57 @@ export function EvidenceCabinet() {
               </thead>
               <tbody className="divide-y divide-paper-300">
                 <tr>
-                  <td className="px-2 py-3 font-bold">Canvas / WebGL</td>
-                  <td className="px-2 py-3">
+                  <td data-label="Signal" className="px-2 py-3 font-bold">
+                    Canvas / WebGL
+                  </td>
+                  <td data-label="Why it exists" className="px-2 py-3">
                     Draw graphics and expose GPU capabilities
                   </td>
-                  <td className="px-2 py-3">
+                  <td data-label="Why it can identify" className="px-2 py-3">
                     Rendering can vary by GPU, driver, OS, and browser
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-3 font-bold">Fonts</td>
-                  <td className="px-2 py-3">
+                  <td data-label="Signal" className="px-2 py-3 font-bold">
+                    Fonts
+                  </td>
+                  <td data-label="Why it exists" className="px-2 py-3">
                     Render documents and application interfaces
                   </td>
-                  <td className="px-2 py-3">
+                  <td data-label="Why it can identify" className="px-2 py-3">
                     Installed sets reflect software and system history
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-3 font-bold">Screen / hardware</td>
-                  <td className="px-2 py-3">
+                  <td data-label="Signal" className="px-2 py-3 font-bold">
+                    Screen / hardware
+                  </td>
+                  <td data-label="Why it exists" className="px-2 py-3">
                     Adapt layout and workload to the device
                   </td>
-                  <td className="px-2 py-3">
+                  <td data-label="Why it can identify" className="px-2 py-3">
                     The combined device class can be uncommon
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-3 font-bold">Locale / timezone</td>
-                  <td className="px-2 py-3">
+                  <td data-label="Signal" className="px-2 py-3 font-bold">
+                    Locale / timezone
+                  </td>
+                  <td data-label="Why it exists" className="px-2 py-3">
                     Format language, dates, and local time
                   </td>
-                  <td className="px-2 py-3">
+                  <td data-label="Why it can identify" className="px-2 py-3">
                     They narrow geography and user configuration
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-3 font-bold">Privacy signals</td>
-                  <td className="px-2 py-3">
+                  <td data-label="Signal" className="px-2 py-3 font-bold">
+                    Privacy signals
+                  </td>
+                  <td data-label="Why it exists" className="px-2 py-3">
                     Express blocking or preference choices
                   </td>
-                  <td className="px-2 py-3">
+                  <td data-label="Why it can identify" className="px-2 py-3">
                     Unusual combinations can themselves add distinction
                   </td>
                 </tr>
@@ -181,7 +191,7 @@ export function EvidenceCabinet() {
             </table>
           </div>
 
-          <h2 className="font-serif text-3xl font-bold">
+          <h2>
             What the Entropy Number Does—and Does Not—Say
           </h2>
 
@@ -216,7 +226,7 @@ export function EvidenceCabinet() {
             stable.
           </p>
 
-          <h2 className="font-serif text-3xl font-bold">
+          <h2>
             The Auction Is a Model, Not a Secret Receipt
           </h2>
 
@@ -265,7 +275,7 @@ export function EvidenceCabinet() {
             </p>
           </aside>
 
-          <h2 className="font-serif text-3xl font-bold">
+          <h2>
             Why “More Random” Is Not Always More Private
           </h2>
 
@@ -302,7 +312,7 @@ export function EvidenceCabinet() {
             essential work is not a durable defense.
           </p>
 
-          <h2 className="font-serif text-3xl font-bold">
+          <h2>
             A Practical Privacy Baseline
           </h2>
 
@@ -350,10 +360,7 @@ export function EvidenceCabinet() {
             anonymous.
           </p>
 
-          <h2
-            id="frequently-asked-questions"
-            className="font-serif text-3xl font-bold"
-          >
+          <h2 id="frequently-asked-questions">
             Frequently Asked Questions
           </h2>
 

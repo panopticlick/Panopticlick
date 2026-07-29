@@ -203,6 +203,88 @@
     @apply pointer-events-none select-none whitespace-nowrap;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
+
+  /* Long-form field notes: a readable editorial measure and a predictable
+     vertical rhythm without depending on the optional typography plugin. */
+  .evidence-notes {
+    @apply mt-12 max-w-[46rem] text-base leading-7 text-ink sm:text-[17px] sm:leading-8;
+  }
+
+  .evidence-notes > h2 {
+    @apply mb-5 mt-16 border-t border-paper-300 pt-10 font-serif text-2xl font-bold leading-tight tracking-tight sm:text-3xl;
+  }
+
+  .evidence-notes > h2:first-child {
+    @apply mt-0 border-0 pt-0;
+  }
+
+  .evidence-notes > h3 {
+    @apply mb-3 mt-9 font-serif text-xl font-bold leading-snug sm:text-2xl;
+  }
+
+  .evidence-notes > p {
+    @apply mb-6;
+  }
+
+  .evidence-notes > .evidence-notes-lead {
+    @apply text-lg leading-8 sm:text-xl sm:leading-9;
+  }
+
+  .evidence-notes > ol {
+    @apply mb-7 ml-5 list-decimal space-y-4 pl-2;
+  }
+
+  .evidence-notes > ol li {
+    @apply pl-2;
+  }
+
+  .evidence-exhibits {
+    @apply my-12 border-y-2 border-ink py-5 text-sm leading-6;
+  }
+
+  .evidence-exhibits caption {
+    @apply mb-4;
+  }
+
+  @media (max-width: 639px) {
+    .evidence-exhibits thead {
+      @apply sr-only;
+    }
+
+    .evidence-exhibits table,
+    .evidence-exhibits tbody,
+    .evidence-exhibits tr,
+    .evidence-exhibits td {
+      @apply block w-full;
+    }
+
+    .evidence-exhibits tbody {
+      @apply divide-y-0;
+    }
+
+    .evidence-exhibits tr {
+      @apply border-t border-paper-300 py-4;
+    }
+
+    .evidence-exhibits td {
+      @apply px-0 py-1;
+    }
+
+    .evidence-exhibits td::before {
+      content: attr(data-label);
+      @apply mb-0.5 block font-mono text-[10px] font-bold uppercase tracking-widest text-ink-300;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .evidence-exhibits {
+      @apply overflow-x-auto;
+    }
+
+    .evidence-exhibits table {
+      min-width: 42rem;
+    }
+  }
 }
 
 /* Utility classes */
