@@ -63,7 +63,7 @@ async function runMobileLocalFlow(browser) {
     if (/\/v1\/scan\//.test(request.url())) scanRequests.push(request.url());
   });
 
-  await page.goto(`${baseUrl}/?qa=mobile-local`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/?qa=mobile-local`, { waitUntil: "domcontentloaded" });
   const consentRegion = page.locator("#site-consent-banner");
   await consentRegion.waitFor({ state: "visible", timeout: 10_000 });
 
@@ -112,13 +112,17 @@ async function runMobileLocalFlow(browser) {
   );
 
   page.__panopticlickQaStage = "restore-reload";
-  await page.reload({ waitUntil: "networkidle" });
-  const restored = await page
-    .getByText("Case file reopened from this device", { exact: false })
-    .isVisible();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const restoredBanner = page.getByText("Case file reopened from this device", {
+    exact: false,
+  });
+  const restored = await restoredBanner
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
   await page.getByRole("button", { name: "Scan again" }).click();
   page.__panopticlickQaStage = "reset-reload";
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   const resetPersisted = await page
     .getByRole("button", { name: "Authorize the investigation" })
     .isVisible();
@@ -182,20 +186,29 @@ async function runDesktopAndDialog(browser) {
   page.__panopticlickQaStage = "tests-dialog";
   await watchPage(page, "desktop");
 
-  await page.goto(`${baseUrl}/tests/?qa=desktop`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/tests/?qa=desktop`, { waitUntil: "domcontentloaded" });
   const trigger = page.getByRole("button", { name: "Ask the analysis agent" });
+  await page
+    .locator(
+      'button[aria-label="Ask the analysis agent"][data-hydrated="true"]:not([disabled])'
+    )
+    .waitFor({ state: "visible", timeout: 10_000 });
   await trigger.focus();
   await trigger.click();
   const input = page.getByRole("textbox", { name: "Ask the agent a question" });
-  await input.waitFor({ state: "visible" });
+  await input.waitFor({ state: "visible", timeout: 10_000 });
   const inputFocused = await input.evaluate((node) => node === document.activeElement);
   await page.keyboard.press("Escape");
+  await input.waitFor({ state: "hidden", timeout: 10_000 });
   const dialogClosed = await input.isHidden();
-  await page.waitForTimeout(100);
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("aria-label") === "Ask the analysis agent"
+  );
   const focusReturned = await trigger.evaluate((node) => node === document.activeElement);
 
   page.__panopticlickQaStage = "desktop-home";
-  await page.goto(`${baseUrl}/?qa=desktop-home`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/?qa=desktop-home`, { waitUntil: "domcontentloaded" });
+  await page.locator("h1").first().waitFor({ state: "visible" });
   const screenshot = await page.screenshot({ type: "jpeg", quality: 60 });
   const result = {
     viewport: await page.evaluate(() => ({
@@ -240,7 +253,7 @@ async function runBlocker(browser, simulatedBlocking) {
   );
   await page.goto(
     `${baseUrl}/tests/blocker/?qa=${simulatedBlocking ? "blocked" : "control"}`,
-    { waitUntil: "networkidle" }
+    { waitUntil: "domcontentloaded" }
   );
   // The test deliberately adds transient script probes to <head>. Wait for the
   // client boundary's explicit hydration gate instead of racing it with an

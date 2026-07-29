@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -14,7 +14,10 @@ import { ChatPanel } from './chat-panel';
 export function ChatLauncher() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const reducedMotion = useReducedMotion();
+
+  useEffect(() => setHydrated(true), []);
 
   if (pathname === '/') return null;
 
@@ -56,7 +59,9 @@ export function ChatLauncher() {
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ink text-paper shadow-document transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-stamp-blue focus-visible:ring-offset-2"
+          disabled={!hydrated}
+          data-hydrated={hydrated ? 'true' : 'false'}
+          className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-ink text-paper shadow-document transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-stamp-blue focus-visible:ring-offset-2 disabled:cursor-wait disabled:hover:scale-100"
           aria-label="Ask the analysis agent"
         >
           <Eye className="h-6 w-6" aria-hidden="true" />
