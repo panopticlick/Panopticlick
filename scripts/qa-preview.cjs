@@ -78,6 +78,16 @@ async function runMobileLocalFlow(browser) {
     reducedMotion: await page.evaluate(() =>
       matchMedia("(prefers-reduced-motion: reduce)").matches
     ),
+    primaryAction: await page
+      .getByRole("button", { name: "Start Investigation" })
+      .evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          bottom: Math.round(rect.bottom),
+          inFirstViewport: rect.top >= 0 && rect.bottom <= innerHeight,
+        };
+      }),
   };
 
   await page.getByRole("button", { name: "Local-only" }).click();
@@ -300,6 +310,13 @@ async function run() {
     if (evidence.mobile.initial.h1Count !== 1) issues.push("mobile homepage must have one h1");
     if (!evidence.mobile.initial.consentVisible) issues.push("consent banner is missing");
     if (!evidence.mobile.initial.reducedMotion) issues.push("reduced-motion context was not active");
+    if (!evidence.mobile.initial.primaryAction.inFirstViewport) {
+      issues.push(
+        `mobile primary action is below the first viewport: ${JSON.stringify(
+          evidence.mobile.initial.primaryAction
+        )}`
+      );
+    }
     if (evidence.mobile.localOnlyScanRequests !== 0) {
       issues.push("local-only scan unexpectedly called the scan API");
     }

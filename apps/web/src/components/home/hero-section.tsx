@@ -34,11 +34,35 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section id="case-file" className="container mx-auto max-w-4xl px-4 py-12">
+    <section id="case-file" className="container mx-auto max-w-4xl px-4 py-6 sm:py-12">
       <Document variant="classified" watermark="CLASSIFIED">
-        <h1 className="mb-8 text-center font-serif text-4xl font-bold tracking-tight md:text-5xl">
+        <h1 className="mb-5 text-center font-serif text-3xl font-bold tracking-tight sm:mb-8 sm:text-4xl md:text-5xl">
           Panopticlick: Browser Fingerprint Test
         </h1>
+
+        <motion.div
+          className="pb-6 text-center sm:pb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            duration: reducedMotion ? 0 : 0.3,
+            delay: reducedMotion ? 0 : 0.2,
+          }}
+        >
+          <p className="mb-4 text-sm text-ink-200 sm:mb-6 sm:text-base">
+            {hasResult
+              ? source === "restored"
+                ? "Your previous case file was reopened — the dossier below is unsealed."
+                : "Investigation complete — the dossier below is unsealed."
+              : "Open the case file on your own browser"}
+          </p>
+
+          <StartScanButton onClick={() => scrollToSection("scan")} />
+
+          <p className="mt-3 text-xs text-ink-300 sm:mt-4">
+            Nothing is uploaded to Panopticlick servers without your explicit consent
+          </p>
+        </motion.div>
 
         <DocumentHeader
           as="h2"
@@ -91,29 +115,6 @@ export function HeroSection() {
             ))}
           </div>
 
-          <motion.div
-            className="py-6 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{
-              duration: reducedMotion ? 0 : 0.3,
-              delay: reducedMotion ? 0 : 0.5,
-            }}
-          >
-            <p className="mb-6 text-ink-200">
-              {hasResult
-                ? source === "restored"
-                  ? "Your previous case file was reopened — the dossier below is unsealed."
-                  : "Investigation complete — the dossier below is unsealed."
-                : "Click below to open the case file on your own browser"}
-            </p>
-
-            <StartScanButton onClick={() => scrollToSection("scan")} />
-
-            <p className="mt-4 text-xs text-ink-300">
-              Nothing is uploaded to Panopticlick servers without your explicit consent
-            </p>
-          </motion.div>
         </div>
       </Document>
 
