@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "panopticlick.org",
-  "updated_at": "2026-07-29T09:30:19Z",
+  "updated_at": "2026-07-29T10:59:16Z",
   "status": "production_verified_with_external_blockers",
   "site_stage": "live",
   "site_type": "privacy_diagnostics",
@@ -36,19 +36,19 @@
       }
     ],
     "status": "production_verified_with_external_blockers",
-    "deployed_at": "2026-07-29T09:21:13Z",
-    "version_id": "3854567a-1554-4c7d-9975-0abf4bc3fb9b"
+    "deployed_at": "2026-07-29T10:51:42Z",
+    "version_id": "35ee37f7-70f8-4b55-a5a2-47b707bd0307"
   },
   "deployment": {
     "pages_project": "panopticlick",
-    "pages_deployment_url": "https://7620c849.panopticlick-8ys.pages.dev/",
+    "pages_deployment_url": "https://ddc63685.panopticlick-8ys.pages.dev/",
     "worker_name": "panopticlick-api",
-    "worker_version_id": "3854567a-1554-4c7d-9975-0abf4bc3fb9b",
+    "worker_version_id": "35ee37f7-70f8-4b55-a5a2-47b707bd0307",
     "api_url": "https://api.panopticlick.org/",
-    "source_commit": "499a879f6c551f8c0c534f6e4e76397308f0f327",
+    "source_commit": "c4bd4342f7b838c04d9b05762a970c3015496cbd",
     "source_tree_dirty": false,
-    "github_run_id": 30439167216,
-    "github_run_url": "https://github.com/panopticlick/Panopticlick/actions/runs/30439167216",
+    "github_run_id": 30445041049,
+    "github_run_url": "https://github.com/panopticlick/Panopticlick/actions/runs/30445041049",
     "wrangler_version": "4.115.0",
     "cron": "0 3 * * *"
   },
@@ -71,16 +71,16 @@
     },
     "lighthouse": {
       "mobile": {
-        "performance": 79,
-        "accessibility": 97,
+        "performance": 71,
+        "accessibility": 96,
         "best_practices": 100,
-        "seo": 100
+        "seo": 92
       },
       "desktop": {
-        "performance": 85,
-        "accessibility": 97,
+        "performance": 92,
+        "accessibility": 96,
         "best_practices": 100,
-        "seo": 100
+        "seo": 92
       },
       "performance_target": 90,
       "performance_target_met": false
@@ -89,10 +89,11 @@
     "console_errors": 0,
     "page_errors": 0,
     "horizontal_overflow_css_px": 0,
-    "full_validation_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T091824Z",
-    "production_browser_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T092223Z",
+    "full_validation_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T104614Z",
+    "production_browser_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T105313Z",
     "visual_manifest": "/tmp/panopticlick-final-visual-20260729-local/manifest.json",
-    "lighthouse_artifacts": "openclaw:/tmp/panopticlick-final-lh-20260729-v2"
+    "evidence_visual_artifacts": "/tmp/panopticlick-evidence-ui-20260729-local/",
+    "lighthouse_artifacts": "openclaw:/tmp/panopticlick-evidence-lh-20260729"
   },
   "public_qa_receipts": [
     {
@@ -102,6 +103,14 @@
       "status": "passed",
       "observed_at": "2026-07-29T09:22:23Z",
       "evidence_path": "/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T092223Z-result.json"
+    },
+    {
+      "scope": "public_production",
+      "validation_kind": "browser",
+      "target_url": "https://panopticlick.org/",
+      "status": "passed",
+      "observed_at": "2026-07-29T10:53:56Z",
+      "evidence_path": "/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T105313Z-result.json"
     }
   ],
   "credentials": {

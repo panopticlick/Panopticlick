@@ -1,6 +1,6 @@
 # Panopticlick.org project state
 
-Updated: 2026-07-29T09:30:19Z
+Updated: 2026-07-29T10:59:16Z
 
 ## Production
 
@@ -8,11 +8,11 @@ Updated: 2026-07-29T09:30:19Z
 - Cloudflare account alias: `Affiliateberry`
 - Cloudflare Pages project: `panopticlick`
 - Cloudflare Worker: `panopticlick-api`
-- Deployed source commit: `499a879f6c551f8c0c534f6e4e76397308f0f327`
-- GitHub Actions deploy: `30439167216` — success
-- Active Worker version: `3854567a-1554-4c7d-9975-0abf4bc3fb9b`
+- Deployed source commit: `c4bd4342f7b838c04d9b05762a970c3015496cbd`
+- GitHub Actions deploy: `30445041049` — success
+- Active Worker version: `35ee37f7-70f8-4b55-a5a2-47b707bd0307`
 - Canonical production surface: `https://panopticlick.org/`
-- Pages deployment receipt: `https://7620c849.panopticlick-8ys.pages.dev/`
+- Pages deployment receipt: `https://ddc63685.panopticlick-8ys.pages.dev/`
 - API endpoint: `https://api.panopticlick.org/`
 - Custom domains: `panopticlick.org` is live; `www.panopticlick.org` currently
   returns Cloudflare `522` and needs account-level Pages/DNS repair.
@@ -41,6 +41,9 @@ Updated: 2026-07-29T09:30:19Z
 - AI chat supports multi-turn messages and uses OpenRouter's current free
   router. Its system prompt labels CPM, personas, and auction results as
   teaching-model outputs rather than observed bids.
+- Evidence Cabinet long-form notes use an explicit 46rem editorial measure,
+  16px/28px mobile body rhythm, distinct section spacing, and a stacked
+  label/value presentation for the fingerprint exhibits table below 640px.
 
 ## Validation receipts
 
@@ -54,27 +57,30 @@ Updated: 2026-07-29T09:30:19Z
   trap/Escape/focus return, blocker control and simulated blocking, CSP,
   console, page errors, and horizontal overflow.
 - Preview receipt:
-  `/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T091824Z-result.json`
+  `/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T104614Z-result.json`
 - Preview artifact:
-  `/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T091824Z`
+  `/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T104614Z`
 - Production browser acceptance: pass at 390×844 and 1440×1000 with
   `consoleErrors=[]`, `pageErrors=[]`, no CSP violations, and both blocker
   outcomes verified.
 - Production browser receipt:
-  `/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T092223Z-result.json`
+  `/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T105313Z-result.json`
 - Production browser artifact:
-  `/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T092223Z`
+  `/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T105313Z`
 - Production API: root 200 with `environment=production`; scan start 200 with a
   token present; status with token 200; status without token 401; malformed
   JSON 400 without a stack; illegal Origin receives no ACAO.
 - Production SEO/edge: apex, robots, llms.txt, sitemap, OG image, canonical and
   JSON-LD pass. Googlebot and OAI-SearchBot fetch the root and robots with 200.
 - Final Lighthouse sample:
-  - mobile: Performance 79, Accessibility 97, Best Practices 100, SEO 100;
-  - desktop: Performance 85, Accessibility 97, Best Practices 100, SEO 100.
-- Final screenshots:
-  `/tmp/panopticlick-final-visual-20260729-local/` (payload preflight passed;
-  CTA is inside the first viewport at both widths).
+  - mobile: Performance 71, Accessibility 96, Best Practices 100, SEO 92;
+  - desktop: Performance 92, Accessibility 96, Best Practices 100, SEO 92.
+  Accessibility remains above the 95 target. Mobile Performance remains below
+  the 90 target, and Lighthouse reports the Cloudflare-injected Managed Robots
+  directive as an unknown directive.
+- Evidence Cabinet screenshots:
+  `/tmp/panopticlick-evidence-ui-20260729-local/` (four 390×900 and
+  1440×1000 JPEGs; payload preflight and visual inspection passed).
 
 ## External blockers and residual risk
 
@@ -95,9 +101,9 @@ Updated: 2026-07-29T09:30:19Z
 - Cloudflare automatic Web Analytics injection is blocked with
   `Cache-Control: no-transform` to preserve the consent promise and CSP. That
   also disables edge HTML compression; with the current account inaccessible,
-  Lighthouse Performance remains below the 90 target. An authorized operator
-  should disable automatic Web Analytics, then remove `no-transform`, redeploy,
-  and rerun Lighthouse.
+  mobile Lighthouse Performance remains below the 90 target. An authorized
+  operator should disable automatic Web Analytics, then remove `no-transform`,
+  redeploy, and rerun Lighthouse.
 - Analytics Engine remains unbound and optional; analytics calls degrade safely
   when the binding is absent.
 - Turnstile, internationalization, and a real wildcard-domain HSTS supercookie
