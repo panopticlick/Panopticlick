@@ -40,15 +40,7 @@ export function HeroSection() {
           Panopticlick: Browser Fingerprint Test
         </h1>
 
-        <motion.div
-          className="pb-6 text-center sm:pb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{
-            duration: reducedMotion ? 0 : 0.3,
-            delay: reducedMotion ? 0 : 0.2,
-          }}
-        >
+        <div className="pb-6 text-center sm:pb-8">
           <p className="mb-4 text-sm text-ink-200 sm:mb-6 sm:text-base">
             {hasResult
               ? source === "restored"
@@ -62,7 +54,7 @@ export function HeroSection() {
           <p className="mt-3 text-xs text-ink-300 sm:mt-4">
             Nothing is uploaded to Panopticlick servers without your explicit consent
           </p>
-        </motion.div>
+        </div>
 
         <DocumentHeader
           as="h2"

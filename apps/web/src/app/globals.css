@@ -199,8 +199,9 @@
   /* Classified watermark */
   .watermark {
     @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
-    @apply text-8xl font-mono font-bold uppercase opacity-5 rotate-[-30deg];
+    @apply text-8xl font-bold uppercase opacity-5 rotate-[-30deg];
     @apply pointer-events-none select-none whitespace-nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   }
 }
 

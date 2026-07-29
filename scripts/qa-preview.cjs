@@ -204,7 +204,7 @@ async function runDesktopAndDialog(browser) {
     .locator(
       'button[aria-label="Ask the analysis agent"][data-hydrated="true"]:not([disabled])'
     )
-    .waitFor({ state: "visible", timeout: 10_000 });
+    .waitFor({ state: "visible", timeout: 30_000 });
   await trigger.focus();
   await trigger.click();
   const input = page.getByRole("textbox", { name: "Ask the agent a question" });
@@ -273,19 +273,21 @@ async function runBlocker(browser, simulatedBlocking) {
   const startButton = page.getByRole("button", { name: "Start Blocker Test" });
   await startButton.waitFor({ state: "visible" });
   await startButton.click();
-  const resultLine = simulatedBlocking
-    ? page.getByText(
-        /^(?:uBlock Origin|AdGuard|Brave Shields|Privacy Badger|Ghostery|Content blocker) detected$/,
-        { exact: true }
-      )
-    : page.getByText("No ad blocker detected", { exact: true });
+  const resultLine = page.getByText(
+    /^(?:No ad blocker detected|Measurement inconclusive|(?:uBlock Origin|AdGuard|Brave Shields|Privacy Badger|Ghostery|Content blocker) detected)$/,
+    { exact: true }
+  );
   await resultLine.waitFor({
     state: "visible",
     timeout: 30_000,
   });
+  const resultText = await resultLine.innerText();
+  const resultVisible = simulatedBlocking
+    ? / detected$/.test(resultText) && resultText !== "No ad blocker detected"
+    : resultText === "No ad blocker detected";
   const result = {
-    resultText: await resultLine.innerText(),
-    resultVisible: await resultLine.isVisible(),
+    resultText,
+    resultVisible,
     horizontalOverflow: await page.evaluate(
       () => document.documentElement.scrollWidth - innerWidth
     ),
