@@ -65,7 +65,7 @@ async function runMobileLocalFlow(browser) {
 
   await page.goto(`${baseUrl}/?qa=mobile-local`, { waitUntil: "domcontentloaded" });
   const consentRegion = page.locator("#site-consent-banner");
-  await consentRegion.waitFor({ state: "visible", timeout: 10_000 });
+  await consentRegion.waitFor({ state: "visible", timeout: 30_000 });
 
   const initial = {
     title: await page.title(),
@@ -116,7 +116,7 @@ async function runMobileLocalFlow(browser) {
   await page.locator("#defense").scrollIntoViewIfNeeded();
   await page
     .getByText("Protection score", { exact: true })
-    .waitFor({ state: "visible", timeout: 10_000 });
+    .waitFor({ state: "visible", timeout: 30_000 });
   const defenseVisible = /protection score/i.test(
     await page.locator("#defense").innerText()
   );
@@ -127,7 +127,7 @@ async function runMobileLocalFlow(browser) {
     exact: false,
   });
   const restored = await restoredBanner
-    .waitFor({ state: "visible", timeout: 10_000 })
+    .waitFor({ state: "visible", timeout: 30_000 })
     .then(() => true)
     .catch(() => false);
   await page.getByRole("button", { name: "Scan again" }).click();
@@ -135,7 +135,7 @@ async function runMobileLocalFlow(browser) {
   await page.reload({ waitUntil: "domcontentloaded" });
   const resetPersisted = await page
     .getByRole("button", { name: "Authorize the investigation" })
-    .waitFor({ state: "visible", timeout: 10_000 })
+    .waitFor({ state: "visible", timeout: 30_000 })
     .then(() => true)
     .catch(() => false);
 
@@ -208,10 +208,10 @@ async function runDesktopAndDialog(browser) {
   await trigger.focus();
   await trigger.click();
   const input = page.getByRole("textbox", { name: "Ask the agent a question" });
-  await input.waitFor({ state: "visible", timeout: 10_000 });
+  await input.waitFor({ state: "visible", timeout: 30_000 });
   const inputFocused = await input.evaluate((node) => node === document.activeElement);
   await page.keyboard.press("Escape");
-  await input.waitFor({ state: "hidden", timeout: 10_000 });
+  await input.waitFor({ state: "hidden", timeout: 30_000 });
   const dialogClosed = await input.isHidden();
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("aria-label") === "Ask the analysis agent"

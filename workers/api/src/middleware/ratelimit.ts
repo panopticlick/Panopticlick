@@ -2,8 +2,7 @@
  * Rate limiting middleware
  *
  * Backed by the Workers Rate Limiting bindings declared in wrangler.toml
- * (`unsafe.bindings`, type "ratelimit") — no KV writes, no Durable Objects,
- * and shared across isolates, unlike the in-memory counter it replaces.
+ * (`ratelimits`) — no KV writes or Durable Objects.
  */
 
 import type { Context, Next } from 'hono';
