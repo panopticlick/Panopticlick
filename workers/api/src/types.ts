@@ -3,8 +3,8 @@
  */
 
 /**
- * Workers Rate Limiting binding (`unsafe.bindings`, type "ratelimit").
- * Not covered by @cloudflare/workers-types yet, so declare the slice we use.
+ * Workers Rate Limiting binding. Keep the narrow slice used by middleware so
+ * the application does not depend on generated platform types in unit tests.
  */
 export interface RateLimitBinding {
   limit(options: { key: string }): Promise<{ success: boolean }>;
