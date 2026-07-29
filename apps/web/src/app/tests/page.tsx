@@ -419,7 +419,7 @@ export default function TestsIndexPage() {
               privacy. It's the foundation for understanding all other privacy risks.
             </p>
             <a
-              href="/#scan"
+              href="/scan/"
               className="inline-block bg-ink text-paper px-8 py-4 font-mono font-bold rounded-sm hover:bg-ink/90 transition-colors"
             >
               Run Full Fingerprint Scan →

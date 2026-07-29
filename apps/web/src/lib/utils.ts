@@ -149,6 +149,14 @@ export function capitalize(text: string): string {
  */
 export function entropyToOneIn(bits: number): string {
   const population = Math.pow(2, bits);
+  // Beyond a quadrillion the named units stop reading as numbers — switch to
+  // a power of ten (2^bits = 10^(bits·log10(2))).
+  if (population >= 1_000_000_000_000_000) {
+    return `1 in 10^${Math.round(bits * Math.log10(2))}`;
+  }
+  if (population >= 1_000_000_000_000) {
+    return `1 in ${(population / 1_000_000_000_000).toFixed(1)} trillion`;
+  }
   if (population >= 1_000_000_000) {
     return `1 in ${(population / 1_000_000_000).toFixed(1)} billion`;
   }

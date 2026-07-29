@@ -7,6 +7,7 @@ Analysis starts locally in your browser. Nothing is sent for storage without exp
 ## Tools
 
 - https://panopticlick.org/ : Browser fingerprint test — measures your browser's uniqueness in bits of entropy and estimates its advertising value.
+- https://panopticlick.org/scan/ : Browser fingerprint scanner — runs the scan directly and lists every exposed signal (canvas, WebGL, audio, fonts, screen, hardware) in a redacted dossier.
 - https://panopticlick.org/simulation/rtb/ : RTB auction simulator — runs a simulated real-time bidding auction on your fingerprint with DSP bids and CPM prices.
 - https://panopticlick.org/tests/webrtc/ : WebRTC leak test — checks whether WebRTC exposes your real IP address, even behind a VPN.
 - https://panopticlick.org/tests/dns/ : DNS leak test — checks whether your DNS queries bypass your VPN and reach your ISP.

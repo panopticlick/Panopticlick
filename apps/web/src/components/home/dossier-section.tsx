@@ -11,7 +11,11 @@ import { SectionShell } from "./section-shell";
  * click lifts it. This is the "privacy invasion" beat of the page, so the data
  * shown is the visitor's own, never an illustration.
  */
-export function DossierSection() {
+export function DossierSection({
+  fileNumber = "03",
+}: {
+  fileNumber?: string;
+} = {}) {
   const { hasResult, dossier, apiStatus } = useScanContext();
   const [revealAll, setRevealAll] = useState(false);
 
@@ -20,7 +24,7 @@ export function DossierSection() {
   return (
     <SectionShell
       id="dossier"
-      fileNumber="03"
+      fileNumber={fileNumber}
       title="The Dossier"
       subtitle="What your browser handed over — hover each redaction to see it."
       locked={!hasResult}

@@ -7,12 +7,13 @@ export const revalidate = 86400; // 24h
 
 // Bump when site content meaningfully changes; a per-build `new Date()`
 // would fake freshness on every deploy.
-const LAST_MODIFIED = new Date('2026-07-28');
+const LAST_MODIFIED = new Date('2026-07-29');
 
 export default function sitemap(): MetadataRoute.Sitemap {
 
   const routes: Array<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'] }> = [
     { path: '/', priority: 1, changeFrequency: 'weekly' },
+    { path: '/scan/', priority: 0.9, changeFrequency: 'weekly' },
     { path: '/tests/', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/tests/webrtc/', priority: 0.8, changeFrequency: 'monthly' },
     { path: '/tests/dns/', priority: 0.8, changeFrequency: 'monthly' },

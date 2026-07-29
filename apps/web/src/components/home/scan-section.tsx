@@ -13,8 +13,17 @@ import { scrollToSection } from "./scroll";
  * File 02 — the authorization desk and the live collection surface. Once the
  * report exists this becomes the case summary with export controls, and the
  * page auto-advances to the freshly unsealed dossier.
+ *
+ * Also reused by the standalone /scan/ page, which renumbers the files via
+ * props (defaults keep the home-page narrative untouched).
  */
-export function ScanSection() {
+export function ScanSection({
+  fileNumber = "02",
+  title = "The Investigation",
+}: {
+  fileNumber?: string;
+  title?: string;
+} = {}) {
   const scan = useScanContext();
   const { phase, hasResult, source } = scan;
   const reducedMotion = useReducedMotion();
@@ -47,13 +56,13 @@ export function ScanSection() {
       <div className="container mx-auto max-w-4xl px-4">
         <header className="mb-8">
           <p className="font-mono text-xs uppercase tracking-widest text-ink-300">
-            File 02
+            File {fileNumber}
           </p>
           <h2
             id="scan-title"
             className="mt-1 font-serif text-3xl font-bold tracking-tight"
           >
-            The Investigation
+            {title}
           </h2>
           <p className="mt-2 max-w-2xl text-ink-200">
             Everything runs in your browser first. Server sync is opt-in, and
@@ -129,7 +138,7 @@ function CaseSummary() {
     {
       label: "Fingerprint entropy",
       value: `${report.entropy.totalBits.toFixed(1)} bits`,
-      detail: `1 in ${entropyToOneIn(report.entropy.totalBits)} browsers`,
+      detail: `${entropyToOneIn(report.entropy.totalBits)} browsers`,
     },
     {
       label: "Advertising value",

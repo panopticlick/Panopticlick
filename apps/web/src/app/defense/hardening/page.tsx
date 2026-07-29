@@ -448,7 +448,7 @@ export default function HardeningGuidePage() {
               </p>
               <ul>
                 <li>
-                  <Link href="/#scan" className="underline">Our fingerprint scanner</Link> — See your uniqueness score
+                  <Link href="/scan/" className="underline">Our fingerprint scanner</Link> — See your uniqueness score
                 </li>
                 <li>
                   <Link href="/tests/webrtc/" className="underline">WebRTC leak test</Link> — Verify IP isn't exposed

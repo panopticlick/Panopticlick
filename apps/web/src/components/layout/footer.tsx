@@ -29,7 +29,7 @@ export function Footer() {
             </h4>
             <nav className="space-y-2 text-sm">
               <Link
-                href="/#scan"
+                href="/scan/"
                 className="block text-paper-300 hover:text-paper transition-colors"
               >
                 Fingerprint Scan

@@ -4,11 +4,10 @@
 # plus Cloudflare Pages' automatic directory-index redirects — no rules needed here.
 
 # Legacy URL support
-/test / 301
-/fingerprint / 301
-/track / 301
-/scan / 301
-/scan/ / 301
+# (/scan is a real page again — do not redirect it)
+/test /scan/ 301
+/fingerprint /scan/ 301
+/track /scan/ 301
 
 # Old Panopticlick paths
 /eff.html /about/ 301
