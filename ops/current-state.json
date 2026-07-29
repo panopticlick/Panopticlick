@@ -92,7 +92,7 @@
     "full_validation_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T091824Z",
     "production_browser_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T092223Z",
     "visual_manifest": "/tmp/panopticlick-final-visual-20260729-local/manifest.json",
-    "lighthouse_artifacts": "/tmp/panopticlick-final-lh-20260729-v2"
+    "lighthouse_artifacts": "openclaw:/tmp/panopticlick-final-lh-20260729-v2"
   },
   "public_qa_receipts": [
     {
