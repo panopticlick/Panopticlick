@@ -47,7 +47,9 @@ export default function BlockerTestPage() {
       }
 
       // Run actual test
-      const analysis = await sdk.runBlockerTests('', 2000);
+      // Leave enough room for a first request to warm a cold edge cache. The
+      // control probe still makes the run inconclusive if it cannot execute.
+      const analysis = await sdk.runBlockerTests('', 5000);
       setResult(analysis);
       setPhase('complete');
     } catch (err) {

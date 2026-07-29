@@ -135,7 +135,9 @@ async function runMobileLocalFlow(browser) {
   await page.reload({ waitUntil: "domcontentloaded" });
   const resetPersisted = await page
     .getByRole("button", { name: "Authorize the investigation" })
-    .isVisible();
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
 
   const testNodeMotion = await page.evaluate(() => {
     const node = document.createElement("span");
