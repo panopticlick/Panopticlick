@@ -134,6 +134,8 @@ try {
     timeout: 90000,
   });
   step("home responds 200", home?.status() === 200, `status=${home?.status()}`);
+  await page.locator("#scan-title").waitFor({ timeout: 30000 });
+  await page.locator("#dossier-title").waitFor({ timeout: 30000 });
   const homeText = await page.evaluate(() => document.body.innerText);
   step(
     "home keeps File 02 investigation numbering",
