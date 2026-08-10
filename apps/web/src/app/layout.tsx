@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { ChatLauncher } from '@/components/ai';
 import { ConsentBanner } from '@/components/consent-banner';
+import { JsonLd, siteJsonLd } from '@/components/seo/json-ld';
 import { serif, sans, mono } from './fonts';
 import './globals.css';
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     default: 'Panopticlick: Free Browser Fingerprint Test & Online Privacy Scanner',
   },
   description:
-    'Test your browser fingerprint for free. See how 94% of browsers are uniquely identifiable. Discover your advertising value in the $595 billion programmatic ad market.',
+    'Run a free browser fingerprint test, inspect exposed signals, check WebRTC, DNS, and tracker blocking, and learn practical privacy defenses.',
   keywords: [
     'browser fingerprint test',
     'browser fingerprinting',
@@ -119,27 +120,8 @@ export default function RootLayout({
         {/* AI Chat - Floating bottom right */}
         <ChatLauncher />
 
-        {/* Structured data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'WebApplication',
-              name: 'Panopticlick',
-              applicationCategory: 'SecurityApplication',
-              description:
-                'Browser fingerprinting test and privacy analysis tool',
-              url: 'https://panopticlick.org',
-              operatingSystem: 'Any',
-              offers: {
-                '@type': 'Offer',
-                price: '0',
-                priceCurrency: 'USD',
-              },
-            }),
-          }}
-        />
+        {/* Stable site identity; routes add their own tool/article schemas. */}
+        <JsonLd data={siteJsonLd()} />
       </body>
     </html>
   );
