@@ -1,6 +1,6 @@
 # Panopticlick.org project state
 
-Updated: 2026-07-29T10:59:16Z
+Updated: 2026-08-10T07:09:42Z
 
 ## Production
 
@@ -8,11 +8,11 @@ Updated: 2026-07-29T10:59:16Z
 - Cloudflare account alias: `Affiliateberry`
 - Cloudflare Pages project: `panopticlick`
 - Cloudflare Worker: `panopticlick-api`
-- Deployed source commit: `c4bd4342f7b838c04d9b05762a970c3015496cbd`
-- GitHub Actions deploy: `30445041049` — success
+- Deployed source commit: `72f0234e10d63759427548882dcb57657739c2c4`
+- GitHub Actions deploy: `31364190450` — success (Pages deployed; Worker skipped)
 - Active Worker version: `35ee37f7-70f8-4b55-a5a2-47b707bd0307`
 - Canonical production surface: `https://panopticlick.org/`
-- Pages deployment receipt: `https://ddc63685.panopticlick-8ys.pages.dev/`
+- Pages deployment receipt: `https://11481c04.panopticlick-8ys.pages.dev/`
 - API endpoint: `https://api.panopticlick.org/`
 - Custom domains: `panopticlick.org` is live; `www.panopticlick.org` currently
   returns Cloudflare `522` and needs account-level Pages/DNS repair.
@@ -46,6 +46,38 @@ Updated: 2026-07-29T10:59:16Z
   label/value presentation for the fingerprint exhibits table below 640px.
 
 ## Validation receipts
+
+### 2026-08-10 AI GEO release
+
+- Clean release-source gate: GitHub Actions run `31364190450` passed workspace
+  typecheck, 22 test files / 227 tests with 1 skipped, and two production Web
+  builds with 26 static routes.
+- Cloudflare Pages uploaded 200 files with Wrangler `4.120.0`; the Worker job
+  was explicitly skipped. Run:
+  `https://github.com/panopticlick/Panopticlick/actions/runs/31364190450`.
+- `/llm.txt` and `/llms.txt` return `200 text/plain`, are byte-identical, and
+  share SHA-256
+  `817a760240e9a49f250dd3bd0f2aee106bd4053c3dc6799c316b24ed7fede773`
+  on both the Pages receipt URL and `https://panopticlick.org/`.
+- Production canonical, Organization/WebSite JSON-LD graph, robots sitemap
+  directive, and the `2026-08-10` sitemap modification date passed.
+- Task-scoped production browser QA passed at 1440×900 and 390×844 with one
+  H1, correct canonical and JSON-LD, both LLM paths identical, `/scan/` live,
+  zero horizontal overflow, zero blocking console errors, and zero page errors.
+- Responsive browser artifact:
+  `/Users/openclaw/artifacts/panopticlick-org/ai-geo-responsive-20260810`;
+  collected screenshots:
+  `/Users/butterfly/.codex/tmp/openclaw-collect/panopticlick-ai-geo-20260810-responsive/`.
+- The broader production browser suite passed nine `/scan/` checks and had no
+  blocking console errors, then failed waiting 30 seconds for RTB Auction
+  Results. The unrelated uncommitted RTB consent-gating change was deliberately
+  excluded from this Pages release; the failure remains a separate release
+  blocker.
+- A separate bounded OpenClaw build/test attempt was environment-blocked before
+  sync: it produced zero-byte receipt/log files and was terminated with exit
+  `130`. The clean GitHub Actions gate above is the release-source proof.
+
+### 2026-07-29 historical release
 
 - Final OpenClaw command:
   `pnpm typecheck && pnpm test && pnpm build && QA_PORT=43210 node scripts/run-preview-qa.cjs`
@@ -83,6 +115,11 @@ Updated: 2026-07-29T10:59:16Z
   1440×1000 JPEGs; payload preflight and visual inspection passed).
 
 ## External blockers and residual risk
+
+- The broad production browser suite currently times out on the RTB simulator
+  after the local-only scan passes. A pending consent-gating change exists in
+  the dirty working tree but was outside the AI GEO release. Review, isolate,
+  deploy, and rerun it as a separate production change.
 
 - `www.panopticlick.org` returns `522`. The Pages custom-domain mapping and the
   zone's `www` DNS record require an operator with Cloudflare Pages/DNS write

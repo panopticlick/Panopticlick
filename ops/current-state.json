@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "panopticlick.org",
-  "updated_at": "2026-07-29T10:59:16Z",
+  "updated_at": "2026-08-10T07:09:42Z",
   "status": "production_verified_with_external_blockers",
   "site_stage": "live",
   "site_type": "privacy_diagnostics",
@@ -36,32 +36,35 @@
       }
     ],
     "status": "production_verified_with_external_blockers",
-    "deployed_at": "2026-07-29T10:51:42Z",
+    "deployed_at": "2026-08-10T07:02:48Z",
     "version_id": "35ee37f7-70f8-4b55-a5a2-47b707bd0307"
   },
   "deployment": {
     "pages_project": "panopticlick",
-    "pages_deployment_url": "https://ddc63685.panopticlick-8ys.pages.dev/",
+    "pages_deployment_url": "https://11481c04.panopticlick-8ys.pages.dev/",
     "worker_name": "panopticlick-api",
     "worker_version_id": "35ee37f7-70f8-4b55-a5a2-47b707bd0307",
     "api_url": "https://api.panopticlick.org/",
-    "source_commit": "c4bd4342f7b838c04d9b05762a970c3015496cbd",
+    "source_commit": "72f0234e10d63759427548882dcb57657739c2c4",
     "source_tree_dirty": false,
-    "github_run_id": 30445041049,
-    "github_run_url": "https://github.com/panopticlick/Panopticlick/actions/runs/30445041049",
-    "wrangler_version": "4.115.0",
+    "release_workflow_commit": "e3e3c6f6b86511008f21afe92a8f9363946fdc14",
+    "release_branch": "release/ai-geo-20260810",
+    "github_run_id": 31364190450,
+    "github_run_url": "https://github.com/panopticlick/Panopticlick/actions/runs/31364190450",
+    "wrangler_version": "4.120.0",
     "cron": "0 3 * * *"
   },
   "quality": {
     "remote_verify": "pass",
     "typecheck_tasks": "8/8",
-    "test_files_passed": 21,
-    "tests_passed": 225,
+    "test_files_passed": 22,
+    "tests_passed": 227,
     "tests_skipped": 1,
-    "static_routes": 25,
+    "static_routes": 26,
     "preview_browser_acceptance": "pass_desktop_and_390",
-    "production_browser_acceptance": "pass_desktop_and_390",
-    "production_http_smoke": "pass_with_www_522",
+    "production_browser_acceptance": "pass_ai_geo_scope_desktop_and_390",
+    "broad_production_browser_acceptance": "failed_preexisting_rtb_timeout_after_9_scan_checks_passed",
+    "production_http_smoke": "pass_with_www_522_and_ai_crawler_403",
     "production_api_smoke": "pass_except_ai_rate_limit",
     "ai_rate_limit_smoke": {
       "status": "failed",
@@ -89,11 +92,64 @@
     "console_errors": 0,
     "page_errors": 0,
     "horizontal_overflow_css_px": 0,
-    "full_validation_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T104614Z",
-    "production_browser_artifact": "/Users/openclaw/artifacts/oc-panopticlick.org-54eac05d/exec/20260729T105313Z",
+    "full_validation_artifact": "https://github.com/panopticlick/Panopticlick/actions/runs/31364190450",
+    "production_browser_artifact": "/Users/openclaw/artifacts/panopticlick-org/ai-geo-responsive-20260810",
+    "production_browser_artifact_local": "/Users/butterfly/.codex/tmp/openclaw-collect/panopticlick-ai-geo-20260810-responsive",
+    "broad_browser_artifact": "/Users/openclaw/artifacts/panopticlick-org/ai-geo-production-20260810",
     "visual_manifest": "/tmp/panopticlick-final-visual-20260729-local/manifest.json",
     "evidence_visual_artifacts": "/tmp/panopticlick-evidence-ui-20260729-local/",
     "lighthouse_artifacts": "openclaw:/tmp/panopticlick-evidence-lh-20260729"
+  },
+  "latest_local_validation": {
+    "validated_at": "2026-08-10T07:09:42Z",
+    "scope": "ai_geo_and_llm_site_index",
+    "status": "deployed_and_production_verified_with_known_blockers",
+    "changed_material": [
+      "apps/web/public/llm.txt",
+      "apps/web/public/llms.txt",
+      "apps/web/src/app/layout.tsx",
+      "apps/web/src/app/sitemap.ts",
+      "apps/web/src/components/seo/json-ld.tsx",
+      "apps/web/__tests__/llm-site-index.test.ts"
+    ],
+    "validation": {
+      "workspace_typecheck_tasks": "8/8",
+      "test_files_passed": 22,
+      "tests_passed": 227,
+      "tests_skipped": 1,
+      "web_static_export": "pass",
+      "static_routes": 26,
+      "llm_paths_exported": [
+        "/llm.txt",
+        "/llms.txt"
+      ],
+      "llm_paths_identical": true,
+      "generated_json_ld_graph": "pass",
+      "git_diff_check": "pass"
+    },
+    "remote_validation": {
+      "command": "GitHub Actions run 31364190450",
+      "status": "pass",
+      "typecheck": "pass",
+      "tests": "22 files, 227 passed, 1 skipped",
+      "build": "26 static routes",
+      "openclaw_test_note": "The separate bounded OpenClaw test wrapper was environment-blocked before sync with zero-byte receipt files and was terminated with exit 130. GitHub Actions supplied the clean release-source validation gate."
+    },
+    "deployment": {
+      "status": "pass",
+      "surface": "cloudflare_pages_only",
+      "pages_deployment_url": "https://11481c04.panopticlick-8ys.pages.dev/",
+      "github_run_id": 31364190450,
+      "worker_job": "skipped"
+    },
+    "production_unchanged": false,
+    "browser_qa": {
+      "ai_geo_scope": "pass_desktop_1440x900_and_mobile_390x844",
+      "console_errors": 0,
+      "page_errors": 0,
+      "horizontal_overflow_css_px": 0,
+      "broad_suite": "failed_on_preexisting_rtb_auction_timeout_after_9_scan_checks_passed"
+    }
   },
   "public_qa_receipts": [
     {
@@ -111,6 +167,16 @@
       "status": "passed",
       "observed_at": "2026-07-29T10:53:56Z",
       "evidence_path": "/Users/butterfly/.codex/state/openclaw-test/oc-panopticlick.org-54eac05d/20260729T105313Z-result.json"
+    },
+    {
+      "scope": "public_production",
+      "validation_kind": "browser",
+      "target_url": "https://panopticlick.org/",
+      "status": "passed",
+      "observed_at": "2026-08-10T07:09:42Z",
+      "deployment_url": "https://11481c04.panopticlick-8ys.pages.dev/",
+      "github_run_url": "https://github.com/panopticlick/Panopticlick/actions/runs/31364190450",
+      "evidence_path": "/Users/openclaw/artifacts/panopticlick-org/ai-geo-responsive-20260810"
     }
   ],
   "credentials": {
@@ -144,6 +210,11 @@
       "owner": "api-cloudflare-operator",
       "issue": "The deployed AI rate-limit binding did not return any 429 in a 15-request production burst.",
       "next_action": "Inspect authenticated Worker runtime logs and secret presence; if exact enforcement is required, implement a deterministic application-level limiter."
+    },
+    {
+      "owner": "project-developer",
+      "issue": "The broad production browser suite timed out waiting for RTB Auction Results after the local-only scan checks passed. An unrelated uncommitted RTB consent-gating change exists in the working tree and was intentionally excluded from the AI GEO Pages release.",
+      "next_action": "Review the existing RTB consent-gating change as a separate release, validate it in isolation, deploy it explicitly, and rerun the broad production browser suite."
     }
   ]
 }
