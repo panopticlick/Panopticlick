@@ -4,7 +4,16 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Manual trigger
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: Deployment surface
+        required: true
+        default: pages
+        type: choice
+        options:
+          - pages
+          - all
 
 env:
   NODE_VERSION: '24'
@@ -46,7 +55,7 @@ jobs:
     name: Deploy Next.js to Cloudflare Pages
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       deployments: write
@@ -105,7 +114,7 @@ jobs:
     name: Deploy API to Cloudflare Workers
     runs-on: ubuntu-latest
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.deploy_target == 'all')
     permissions:
       contents: read
 
@@ -146,8 +155,8 @@ jobs:
     steps:
       - name: Check deployment status
         run: |
-          if [ "${{ needs.deploy-pages.result }}" == "success" ] && [ "${{ needs.deploy-worker.result }}" == "success" ]; then
-            echo "✅ All deployments successful!"
+          if [ "${{ needs.deploy-pages.result }}" == "success" ] && { [ "${{ needs.deploy-worker.result }}" == "success" ] || [ "${{ needs.deploy-worker.result }}" == "skipped" ]; }; then
+            echo "✅ Requested deployments successful!"
             echo "🌐 Pages: https://panopticlick.org"
             echo "🔧 API: https://api.panopticlick.org"
           else
