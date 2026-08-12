@@ -75,7 +75,7 @@ export function ScanSection({
           variant={phase === "idle" ? "classified" : "dossier"}
           watermark={watermark}
         >
-          <AnimatePresence mode="wait" initial={false}>
+          <AnimatePresence initial={false}>
             {phase === "idle" && (
               <motion.div
                 key="gate"

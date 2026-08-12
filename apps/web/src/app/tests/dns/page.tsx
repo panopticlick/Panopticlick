@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -31,9 +31,14 @@ interface DNSResult {
 }
 
 export default function DNSTestPage() {
+  const [hydrated, setHydrated] = useState(false);
   const [phase, setPhase] = useState<TestPhase>('ready');
   const [result, setResult] = useState<DNSResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const runTest = useCallback(async () => {
     setPhase('testing');
@@ -80,7 +85,7 @@ export default function DNSTestPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <ReadyPhase onStart={runTest} />
+              <ReadyPhase onStart={runTest} disabled={!hydrated} />
             </motion.div>
           )}
 
@@ -110,7 +115,13 @@ export default function DNSTestPage() {
   );
 }
 
-function ReadyPhase({ onStart }: { onStart: () => void }) {
+function ReadyPhase({
+  onStart,
+  disabled,
+}: {
+  onStart: () => void;
+  disabled: boolean;
+}) {
   return (
     <Document variant="classified" watermark="DNS ANALYSIS">
       <DocumentHeader
@@ -209,7 +220,7 @@ function ReadyPhase({ onStart }: { onStart: () => void }) {
         </DocumentSection>
 
         <div className="flex justify-center pt-4">
-          <Button variant="primary" size="lg" onClick={onStart}>
+          <Button variant="primary" size="lg" onClick={onStart} disabled={disabled}>
             Start DNS Leak Test
           </Button>
         </div>

@@ -56,6 +56,16 @@ async function waitForVisible(locator, name, timeout) {
   }
 }
 
+async function waitForEnabled(locator, name, timeout) {
+  await locator.waitFor({ state: "visible", timeout });
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    if (await locator.isEnabled().catch(() => false)) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`${name} did not become enabled within ${timeout}ms`);
+}
+
 const browser = await chromium.launch({ headless: true });
 let page;
 try {
@@ -164,7 +174,7 @@ try {
   const authorize = page.getByRole("button", {
     name: /authorize the investigation/i,
   });
-  await authorize.waitFor({ state: "visible", timeout: 30000 });
+  await waitForEnabled(authorize, "authorize button", 30000);
   await authorize.click();
   step("scan authorized", true);
   await waitForVisible(
@@ -206,7 +216,7 @@ try {
   const auctionButton = page.getByRole("button", {
     name: /start auction with my fingerprint/i,
   });
-  await auctionButton.waitFor({ state: "visible", timeout: 30000 });
+  await waitForEnabled(auctionButton, "RTB button", 30000);
   await auctionButton.click();
   await waitForVisible(
     page.getByRole("heading", { name: "Auction Results" }),
@@ -226,7 +236,7 @@ try {
     timeout: 90000,
   });
   const dnsButton = page.getByRole("button", { name: /start dns leak test/i });
-  await dnsButton.waitFor({ state: "visible", timeout: 30000 });
+  await waitForEnabled(dnsButton, "DNS button", 30000);
   await dnsButton.click();
   await waitForVisible(
     page.getByRole("heading", { name: "DNS leak status inconclusive" }),

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -18,6 +18,7 @@ import { formatCPM } from '@/lib/utils';
 import type { FingerprintPayload, RTBBid, Persona } from '@panopticlick/types';
 
 export default function RTBSimulatorPage() {
+  const [hydrated, setHydrated] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<
     'idle' | 'collecting' | 'bidding' | 'complete'
@@ -33,6 +34,10 @@ export default function RTBSimulatorPage() {
   const [totalTime, setTotalTime] = useState(0);
   const [valueSource, setValueSource] = useState<'api' | 'local'>('local');
   const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const runSimulation = async () => {
     setIsRunning(true);
@@ -154,7 +159,7 @@ export default function RTBSimulatorPage() {
               variant="primary"
               size="lg"
               onClick={runSimulation}
-              disabled={isRunning}
+              disabled={isRunning || !hydrated}
               className="w-full md:w-auto px-8"
             >
               {isRunning
