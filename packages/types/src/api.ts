@@ -156,6 +156,8 @@ export interface DefenseDNSResponse {
   leakTest: {
     passed: boolean;
     leakedIPs: string[];
+    /** The edge API cannot observe the resolver used by the visitor's device. */
+    status?: 'passed' | 'failed' | 'inconclusive';
   };
 }
 

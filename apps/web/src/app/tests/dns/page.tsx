@@ -16,6 +16,7 @@ type TestPhase = 'ready' | 'testing' | 'complete';
 
 interface DNSResult {
   isDemo?: boolean;
+  status: 'passed' | 'failed' | 'inconclusive';
   leaking: boolean;
   isEncrypted: boolean;
   provider: string | null;
@@ -45,12 +46,13 @@ export default function DNSTestPage() {
     } catch (err) {
       // Show demo data with clear indication that this is demonstration mode
       setResult({
+        status: 'inconclusive',
         leaking: false,
         resolvers: [],
-        isEncrypted: true,
-        provider: 'Cloudflare',
+        isEncrypted: false,
+        provider: null,
         recommendations: [
-          'Good! You\'re using Cloudflare with encrypted DNS. Your DNS queries are protected.',
+          'The resolver could not be observed from this edge endpoint, so no leak verdict is claimed.',
           'In Chrome, go to Settings > Privacy and Security > Security > Use secure DNS with Cloudflare or Google',
         ],
         isDemo: true,
@@ -99,11 +101,7 @@ export default function DNSTestPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              <ResultsPhase
-                result={result}
-                error={error}
-                onRetest={runTest}
-              />
+              <ResultsPhase result={result} error={error} onRetest={runTest} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -125,10 +123,11 @@ function ReadyPhase({ onStart }: { onStart: () => void }) {
       <div className="space-y-6">
         <div className="prose prose-lg max-w-none">
           <p className="font-serif text-xl leading-relaxed">
-            <span className="marker">DNS</span> (Domain Name System) translates website
-            names to IP addresses. When you use a VPN, your DNS queries should go
-            through the VPN tunnel. A <span className="font-bold">DNS leak</span> occurs
-            when queries bypass the VPN, exposing your browsing activity to your ISP.
+            <span className="marker">DNS</span> (Domain Name System) translates
+            website names to IP addresses. When you use a VPN, your DNS queries
+            should go through the VPN tunnel. A{' '}
+            <span className="font-bold">DNS leak</span> occurs when queries
+            bypass the VPN, exposing your browsing activity to your ISP.
           </p>
         </div>
 
@@ -197,7 +196,10 @@ function ReadyPhase({ onStart }: { onStart: () => void }) {
               { name: 'Quad9', ip: '9.9.9.9', feature: 'Malware blocking' },
               { name: 'NextDNS', ip: '45.90.28.0', feature: 'Customizable' },
             ].map((provider) => (
-              <div key={provider.name} className="bg-paper-100 p-4 rounded-sm text-center">
+              <div
+                key={provider.name}
+                className="bg-paper-100 p-4 rounded-sm text-center"
+              >
                 <div className="font-mono text-lg font-bold">{provider.ip}</div>
                 <div className="font-bold">{provider.name}</div>
                 <div className="text-xs text-ink-300">{provider.feature}</div>
@@ -305,12 +307,14 @@ function ResultsPhase({
     );
   }
 
-  const isSecure = !result.leaking && result.isEncrypted;
+  const isSecure =
+    result.status === 'passed' && !result.leaking && result.isEncrypted;
+  const isInconclusive = result.status === 'inconclusive';
 
   return (
     <div className="space-y-6">
-      {/* Demo Mode Banner */}
-      {result.isDemo && (
+      {/* Inconclusive result banner */}
+      {isInconclusive && (
         <motion.div
           className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-sm"
           initial={{ opacity: 0, y: -10 }}
@@ -319,9 +323,9 @@ function ResultsPhase({
           <div className="flex items-center gap-2">
             <span className="text-xl">ℹ️</span>
             <div>
-              <strong>Demo Mode:</strong> The DNS leak test API is not available.
-              Showing demonstration data. For accurate results, ensure the API
-              endpoint is configured and accessible.
+              <strong>Inconclusive:</strong> This endpoint cannot observe the
+              DNS resolver used by your device, so it does not claim a pass or
+              leak.
             </div>
           </div>
         </motion.div>
@@ -329,45 +333,61 @@ function ResultsPhase({
 
       <Document
         variant="classified"
-        watermark={result.leaking ? 'LEAK DETECTED' : 'SECURE'}
+        watermark={
+          isInconclusive
+            ? 'INCONCLUSIVE'
+            : result.leaking
+              ? 'LEAK DETECTED'
+              : 'SECURE'
+        }
       >
         <DocumentHeader
           title="DNS Leak Test Results"
           subtitle={
-            result.leaking
-              ? 'Warning: DNS leak detected'
-              : 'Your DNS configuration appears secure'
+            isInconclusive
+              ? 'Resolver-level leak status could not be observed'
+              : result.leaking
+                ? 'Warning: DNS leak detected'
+                : 'Your DNS configuration appears secure'
           }
-          classification={result.leaking ? 'secret' : 'confidential'}
+          classification={
+            isInconclusive || result.leaking ? 'secret' : 'confidential'
+          }
           date={new Date()}
         />
 
         {/* Status Banner */}
         <motion.div
           className={`p-6 rounded-sm mb-6 ${
-            result.leaking
-              ? 'bg-alert-red/10 border border-alert-red/30'
-              : 'bg-alert-green/10 border border-alert-green/30'
+            isInconclusive
+              ? 'bg-alert-orange/10 border border-alert-orange/30'
+              : result.leaking
+                ? 'bg-alert-red/10 border border-alert-red/30'
+                : 'bg-alert-green/10 border border-alert-green/30'
           }`}
           initial={{ scale: 0.95 }}
           animate={{ scale: 1 }}
         >
           <div className="flex items-center gap-4">
             <div className="text-4xl">
-              {result.leaking ? '🚨' : '✅'}
+              {isInconclusive ? '⚠️' : result.leaking ? '🚨' : '✅'}
             </div>
             <div>
               <h3 className="font-serif text-xl font-bold">
-                {result.leaking
-                  ? 'DNS Leak Detected!'
-                  : 'No DNS Leak Detected'}
+                {isInconclusive
+                  ? 'DNS leak status inconclusive'
+                  : result.leaking
+                    ? 'DNS Leak Detected!'
+                    : 'No DNS Leak Detected'}
               </h3>
               <p className="text-ink-200">
-                {result.leaking
-                  ? 'Your DNS queries may be visible to your ISP'
-                  : result.provider
-                  ? `Using ${result.provider} for DNS resolution`
-                  : 'DNS appears to be routed securely'}
+                {isInconclusive
+                  ? 'The test endpoint cannot see your device resolver'
+                  : result.leaking
+                    ? 'Your DNS queries may be visible to your ISP'
+                    : result.provider
+                      ? `Using ${result.provider} for DNS resolution`
+                      : 'DNS appears to be routed securely'}
               </p>
             </div>
           </div>
@@ -378,29 +398,39 @@ function ResultsPhase({
           <div className="grid md:grid-cols-3 gap-4">
             <div className="p-4 border border-paper-300 rounded-sm text-center">
               <div className="text-2xl mb-2">
-                {result.leaking ? '🚨' : '✅'}
+                {isInconclusive ? '⚠️' : result.leaking ? '🚨' : '✅'}
               </div>
               <div className="font-mono text-sm">DNS Leak</div>
               <div className="text-xs text-ink-300">
-                {result.leaking ? 'Detected' : 'Not detected'}
+                {isInconclusive
+                  ? 'Inconclusive'
+                  : result.leaking
+                    ? 'Detected'
+                    : 'Not detected'}
               </div>
             </div>
             <div className="p-4 border border-paper-300 rounded-sm text-center">
               <div className="text-2xl mb-2">
-                {result.isEncrypted ? '🔒' : '⚠️'}
+                {isInconclusive ? '⚠️' : result.isEncrypted ? '🔒' : '⚠️'}
               </div>
               <div className="font-mono text-sm">Encryption</div>
               <div className="text-xs text-ink-300">
-                {result.isEncrypted ? 'DoH/DoT active' : 'Not encrypted'}
+                {isInconclusive
+                  ? 'Not measured'
+                  : result.isEncrypted
+                    ? 'DoH/DoT active'
+                    : 'Not encrypted'}
               </div>
             </div>
             <div className="p-4 border border-paper-300 rounded-sm text-center">
               <div className="text-2xl mb-2">
-                {result.provider ? '✅' : '⚠️'}
+                {result.provider && !isInconclusive ? '✅' : '⚠️'}
               </div>
               <div className="font-mono text-sm">Provider</div>
               <div className="text-xs text-ink-300">
-                {result.provider || 'Unknown/ISP'}
+                {isInconclusive
+                  ? 'Not observed'
+                  : result.provider || 'Unknown/ISP'}
               </div>
             </div>
           </div>
@@ -415,7 +445,11 @@ function ResultsPhase({
                   key={i}
                   className="flex justify-between items-center py-2 border-b border-paper-300/20 last:border-0"
                 >
-                  <span className={resolver.isSecure ? 'text-alert-green' : 'text-alert-red'}>
+                  <span
+                    className={
+                      resolver.isSecure ? 'text-alert-green' : 'text-alert-red'
+                    }
+                  >
                     {resolver.ip}
                   </span>
                   <span className="text-paper-400">
@@ -487,8 +521,12 @@ function ResultsPhase({
 
       {/* Stamps */}
       <div className="flex justify-center gap-6">
-        <Stamp variant={isSecure ? 'protected' : 'exposed'}>
-          {isSecure ? 'Secure' : 'At Risk'}
+        <Stamp
+          variant={
+            isInconclusive ? 'pending' : isSecure ? 'protected' : 'exposed'
+          }
+        >
+          {isInconclusive ? 'Inconclusive' : isSecure ? 'Secure' : 'At Risk'}
         </Stamp>
         <Stamp variant="verified">Tested</Stamp>
       </div>
@@ -538,15 +576,13 @@ function SecureDNSProviders() {
   return (
     <div className="mt-4 grid gap-3">
       {providers.map((provider) => (
-        <div
-          key={provider.name}
-          className="bg-paper-100 p-4 rounded-sm"
-        >
+        <div key={provider.name} className="bg-paper-100 p-4 rounded-sm">
           <div className="flex items-start justify-between">
             <div>
               <h4 className="font-bold">{provider.name}</h4>
               <div className="font-mono text-sm text-ink-300 mt-1">
-                Primary: {provider.primaryIP} | Secondary: {provider.secondaryIP}
+                Primary: {provider.primaryIP} | Secondary:{' '}
+                {provider.secondaryIP}
               </div>
               <div className="text-xs text-ink-300 mt-1">
                 DoH: {provider.dohUrl}

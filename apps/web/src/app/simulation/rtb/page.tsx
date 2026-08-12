@@ -12,14 +12,19 @@ import {
   EntropyMeter,
 } from '@/components/ui';
 import { api } from '@/lib/api-client';
+import { getConsent } from '@/lib/consent';
 import { mapAuctionResponse } from '@/lib/rtb-mapping';
 import { formatCPM } from '@/lib/utils';
 import type { FingerprintPayload, RTBBid, Persona } from '@panopticlick/types';
 
 export default function RTBSimulatorPage() {
   const [isRunning, setIsRunning] = useState(false);
-  const [phase, setPhase] = useState<'idle' | 'collecting' | 'bidding' | 'complete'>('idle');
-  const [fingerprint, setFingerprint] = useState<FingerprintPayload | null>(null);
+  const [phase, setPhase] = useState<
+    'idle' | 'collecting' | 'bidding' | 'complete'
+  >('idle');
+  const [fingerprint, setFingerprint] = useState<FingerprintPayload | null>(
+    null,
+  );
   const [bids, setBids] = useState<RTBBid[]>([]);
   const [winner, setWinner] = useState<RTBBid | null>(null);
   const [averageCPM, setAverageCPM] = useState(0);
@@ -61,22 +66,28 @@ export default function RTBSimulatorPage() {
       setEntropyBits(entropyReport.totalBits);
       setValueSource('local');
 
-      // Try to augment with API-backed simulation (population stats, market multipliers)
-      try {
-        const apiResult = await api.rtb.simulate(fp);
-        const mapped = mapAuctionResponse(apiResult);
+      // Keep the simulator local unless the visitor has explicitly opted in to
+      // server-side storage/processing through the site-wide consent banner.
+      if (getConsent() !== 'granted') {
+        setApiError('Consent not granted; using the local simulator only.');
+      } else {
+        // API augmentation adds population stats and market multipliers.
+        try {
+          const apiResult = await api.rtb.simulate(fp);
+          const mapped = mapAuctionResponse(apiResult);
 
-        if (mapped) {
-          setBids(mapped.bids);
-          setWinner(mapped.winner);
-          setAverageCPM(mapped.averageCPM ?? localSim.averageCPM);
-          if (mapped.personas) setPersonas(mapped.personas);
-          if (mapped.entropyBits !== null) setEntropyBits(mapped.entropyBits);
-          setValueSource('api');
+          if (mapped) {
+            setBids(mapped.bids);
+            setWinner(mapped.winner);
+            setAverageCPM(mapped.averageCPM ?? localSim.averageCPM);
+            if (mapped.personas) setPersonas(mapped.personas);
+            if (mapped.entropyBits !== null) setEntropyBits(mapped.entropyBits);
+            setValueSource('api');
+          }
+        } catch (err) {
+          console.warn('RTB API unavailable, using local simulation', err);
+          setApiError('API unavailable, using local simulator');
         }
-      } catch (err) {
-        console.warn('RTB API unavailable, using local simulation', err);
-        setApiError('API unavailable, using local simulator');
       }
 
       setTotalTime(Math.max(50, Math.round(performance.now() - started)));
@@ -130,9 +141,10 @@ export default function RTBSimulatorPage() {
 
           <div className="prose prose-lg max-w-none mb-8">
             <p>
-              Every time you visit a website with ads, an auction happens in under 100 milliseconds.
-              Advertisers receive your profile data and compete to show you an ad. This simulator
-              demonstrates what that looks like from the inside.
+              Every time you visit a website with ads, an auction can happen in
+              under 100 milliseconds. This educational simulator models the
+              signals an ad exchange could use; it does not contact advertisers
+              or run a live auction.
             </p>
           </div>
 
@@ -145,7 +157,9 @@ export default function RTBSimulatorPage() {
               disabled={isRunning}
               className="w-full md:w-auto px-8"
             >
-              {isRunning ? 'Running auction...' : 'Start Auction with My Fingerprint'}
+              {isRunning
+                ? 'Running auction...'
+                : 'Start Auction with My Fingerprint'}
             </Button>
 
             <div className="flex items-center gap-2 text-xs text-ink-300">
@@ -173,7 +187,9 @@ export default function RTBSimulatorPage() {
             {/* User Profile Panel */}
             <div className="document p-4">
               <h3 className="font-mono text-sm uppercase tracking-wider mb-4 flex items-center gap-2">
-                <span className={phase === 'collecting' ? 'text-highlight' : ''}>
+                <span
+                  className={phase === 'collecting' ? 'text-highlight' : ''}
+                >
                   {phase === 'collecting' ? '⟳' : '📊'}
                 </span>
                 Your Data Profile
@@ -189,52 +205,72 @@ export default function RTBSimulatorPage() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="bg-paper-200 p-2 rounded-sm">
                         <div className="text-xs text-ink-300">Timezone</div>
-                        <div className="font-mono">{fingerprint.software.timezone}</div>
+                        <div className="font-mono">
+                          {fingerprint.software.timezone}
+                        </div>
                       </div>
                       <div className="bg-paper-200 p-2 rounded-sm">
                         <div className="text-xs text-ink-300">Language</div>
-                        <div className="font-mono">{fingerprint.software.language}</div>
+                        <div className="font-mono">
+                          {fingerprint.software.language}
+                        </div>
                       </div>
                       <div className="bg-paper-200 p-2 rounded-sm">
                         <div className="text-xs text-ink-300">Platform</div>
-                        <div className="font-mono">{fingerprint.software.platform}</div>
+                        <div className="font-mono">
+                          {fingerprint.software.platform}
+                        </div>
                       </div>
                       <div className="bg-paper-200 p-2 rounded-sm">
                         <div className="text-xs text-ink-300">Screen</div>
                         <div className="font-mono">
-                          {fingerprint.hardware.screen.width}x{fingerprint.hardware.screen.height} @
+                          {fingerprint.hardware.screen.width}x
+                          {fingerprint.hardware.screen.height} @
                           {fingerprint.hardware.screen.pixelRatio}x
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs text-ink-300 uppercase mb-1">Detected Personas</div>
+                      <div className="text-xs text-ink-300 uppercase mb-1">
+                        Detected Personas
+                      </div>
                       <div className="flex flex-wrap gap-1">
                         {personaNames.length > 0 ? (
                           personaNames.map((persona) => (
-                            <span key={persona} className="text-xs px-2 py-1 bg-highlight/20 rounded-sm">
+                            <span
+                              key={persona}
+                              className="text-xs px-2 py-1 bg-highlight/20 rounded-sm"
+                            >
                               {persona}
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-ink-300">General profile</span>
+                          <span className="text-xs text-ink-300">
+                            General profile
+                          </span>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-xs text-ink-300 uppercase mb-1">Signals Advertisers See</div>
+                      <div className="text-xs text-ink-300 uppercase mb-1">
+                        Signals Advertisers See
+                      </div>
                       <ul className="text-xs space-y-1">
                         {signalChips.map((signal) => (
-                          <li key={signal} className="text-ink-200">• {signal}</li>
+                          <li key={signal} className="text-ink-200">
+                            • {signal}
+                          </li>
                         ))}
                       </ul>
                     </div>
                   </motion.div>
                 ) : (
                   <div className="text-center text-ink-300 py-8">
-                    <p className="font-mono text-sm">Start the auction to see your live profile.</p>
+                    <p className="font-mono text-sm">
+                      Start the auction to see your live profile.
+                    </p>
                   </div>
                 )}
               </AnimatePresence>
@@ -265,7 +301,9 @@ export default function RTBSimulatorPage() {
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-bold">{bid.bidder}</div>
-                          <div className="text-xs text-ink-300 capitalize">{bid.interest}</div>
+                          <div className="text-xs text-ink-300 capitalize">
+                            {bid.interest}
+                          </div>
                         </div>
                         <div className="text-right">
                           <div className="font-mono font-bold text-lg">
@@ -300,12 +338,20 @@ export default function RTBSimulatorPage() {
                   <div className="bg-alert-green/10 border-l-4 border-alert-green p-6 rounded-sm">
                     <div className="grid md:grid-cols-3 gap-6">
                       <div>
-                        <div className="text-xs text-ink-300 uppercase mb-1">Winner</div>
-                        <div className="text-2xl font-bold">{(winner || bids[0]).bidder}</div>
-                        <div className="text-sm text-ink-200 capitalize">{(winner || bids[0]).interest}</div>
+                        <div className="text-xs text-ink-300 uppercase mb-1">
+                          Winner
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {(winner || bids[0]).bidder}
+                        </div>
+                        <div className="text-sm text-ink-200 capitalize">
+                          {(winner || bids[0]).interest}
+                        </div>
                       </div>
                       <div>
-                        <div className="text-xs text-ink-300 uppercase mb-1">Winning Bid (CPM)</div>
+                        <div className="text-xs text-ink-300 uppercase mb-1">
+                          Winning Bid (CPM)
+                        </div>
                         <div className="text-2xl font-bold text-alert-green">
                           {formatCPM((winner || bids[0]).amount)}
                         </div>
@@ -314,7 +360,9 @@ export default function RTBSimulatorPage() {
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-ink-300 uppercase mb-1">Total Auction Time</div>
+                        <div className="text-xs text-ink-300 uppercase mb-1">
+                          Total Auction Time
+                        </div>
                         <div className="text-2xl font-bold">{totalTime}ms</div>
                         <div className="text-xs text-ink-200">
                           {bids.length} bidders evaluated you in real-time
@@ -331,20 +379,48 @@ export default function RTBSimulatorPage() {
 
                   <div className="mt-6 grid md:grid-cols-2 gap-4">
                     <div className="bg-paper-100 p-4 rounded-sm">
-                      <h4 className="font-mono text-sm font-bold mb-2">What Just Happened</h4>
+                      <h4 className="font-mono text-sm font-bold mb-2">
+                        What Just Happened
+                      </h4>
                       <ol className="text-sm text-ink-200 space-y-1">
-                        <li>1. Your fingerprint was packaged and sent to an ad exchange</li>
-                        <li>2. {bids.length} DSPs evaluated your profile against live campaigns</li>
-                        <li>3. Bids arrived in ~{totalTime}ms; the highest CPM won</li>
-                        <li>4. Even losing bidders still saw your profile data</li>
+                        <li>
+                          1. Your fingerprint was analyzed locally for this
+                          demonstration
+                        </li>
+                        <li>
+                          2. {bids.length} modeled DSP profiles scored the
+                          signals
+                        </li>
+                        <li>
+                          3. Simulated bids were produced in ~{totalTime}ms; the
+                          highest CPM won
+                        </li>
+                        <li>
+                          4. No real advertiser or campaign received this report
+                        </li>
                       </ol>
                     </div>
                     <div className="bg-paper-100 p-4 rounded-sm">
-                      <h4 className="font-mono text-sm font-bold mb-2">Your Market Position</h4>
+                      <h4 className="font-mono text-sm font-bold mb-2">
+                        Your Market Position
+                      </h4>
                       <div className="text-sm text-ink-200 space-y-1">
-                        <p>• Top personas: {personaNames.slice(0, 3).join(', ') || 'General'}</p>
-                        <p>• Trackability: {entropyBits ? `${entropyBits.toFixed(1)} bits` : 'estimating...'}</p>
-                        <p>• Value source: {valueSource === 'api' ? 'API + population stats' : 'Local simulation'}</p>
+                        <p>
+                          • Top personas:{' '}
+                          {personaNames.slice(0, 3).join(', ') || 'General'}
+                        </p>
+                        <p>
+                          • Trackability:{' '}
+                          {entropyBits
+                            ? `${entropyBits.toFixed(1)} bits`
+                            : 'estimating...'}
+                        </p>
+                        <p>
+                          • Value source:{' '}
+                          {valueSource === 'api'
+                            ? 'API + population stats'
+                            : 'Local simulation'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -356,24 +432,34 @@ export default function RTBSimulatorPage() {
           <DocumentSection title="Understanding RTB Privacy Implications">
             <div className="space-y-4">
               <div className="bg-alert-red/10 border-l-4 border-alert-red p-4">
-                <h4 className="font-mono text-sm font-bold mb-2">Data Leakage</h4>
+                <h4 className="font-mono text-sm font-bold mb-2">
+                  Data Leakage
+                </h4>
                 <p className="text-sm text-ink-200">
-                  Even losing bidders receive your profile data. In a single page load with
-                  multiple ad slots, your data might be broadcast to hundreds of companies.
+                  In a real auction, even losing bidders may receive profile
+                  data. In a single page load with multiple ad slots,
+                  information might be broadcast to hundreds of companies; this
+                  page only models that flow locally.
                 </p>
               </div>
               <div className="bg-alert-orange/10 border-l-4 border-alert-orange p-4">
-                <h4 className="font-mono text-sm font-bold mb-2">No Consent Per-Bid</h4>
+                <h4 className="font-mono text-sm font-bold mb-2">
+                  No Consent Per-Bid
+                </h4>
                 <p className="text-sm text-ink-200">
-                  You consented (maybe) to the publisher. But your data flows to ad exchanges,
-                  DSPs, and data partners you've never heard of. Each has their own data practices.
+                  In a real auction, a publisher consent choice may not cover
+                  every ad exchange, DSP, and data partner. This simulator does
+                  not send your data to any of them.
                 </p>
               </div>
               <div className="bg-alert-orange/10 border-l-4 border-alert-orange p-4">
-                <h4 className="font-mono text-sm font-bold mb-2">Location & Sensitive Data</h4>
+                <h4 className="font-mono text-sm font-bold mb-2">
+                  Location & Sensitive Data
+                </h4>
                 <p className="text-sm text-ink-200">
-                  RTB bid requests often include precise location, device IDs, and inferred
-                  sensitive categories (health conditions, political affiliation, religion).
+                  RTB bid requests often include precise location, device IDs,
+                  and inferred sensitive categories (health conditions,
+                  political affiliation, religion).
                 </p>
               </div>
             </div>

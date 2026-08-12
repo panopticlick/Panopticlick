@@ -7,8 +7,8 @@ on:
   workflow_dispatch: # Manual trigger
 
 env:
-  NODE_VERSION: '24'
-  PNPM_VERSION: '8.15.0'
+  NODE_VERSION: "24"
+  PNPM_VERSION: "8.15.0"
 
 jobs:
   # Gate: nothing reaches production without a green typecheck + test run
@@ -37,6 +37,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
 
       - name: Test
         run: pnpm test

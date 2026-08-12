@@ -20,11 +20,14 @@ interface ComparisonStats {
   percentile: number;
   similarCount: number;
   totalScans: number;
-  componentComparisons: Record<string, {
-    uniqueness: number;
-    percentile: number;
-    commonValue: boolean;
-  }>;
+  componentComparisons: Record<
+    string,
+    {
+      uniqueness: number;
+      percentile: number;
+      commonValue: boolean;
+    }
+  >;
 }
 
 export interface AIChatMessage {
@@ -55,7 +58,8 @@ export interface AIChatResponse {
 
 // API Configuration
 // Support both legacy and current env names for API base
-const ENV_BASE = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
+const ENV_BASE =
+  process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const API_CONFIG = {
   development: {
@@ -69,7 +73,8 @@ const API_CONFIG = {
 } as const;
 
 // Determine environment
-const ENV = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+const ENV =
+  process.env.NODE_ENV === 'production' ? 'production' : 'development';
 const config = API_CONFIG[ENV];
 
 /**
@@ -81,7 +86,7 @@ export class APIError extends Error {
     public code: string,
     public status: number,
     public details?: unknown,
-    public retryAfterSeconds?: number
+    public retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = 'APIError';
@@ -93,7 +98,7 @@ export class APIError extends Error {
       error?: string | { code?: string; message?: string };
       code?: string;
       message?: string;
-    }
+    },
   ) {
     const nestedError =
       data?.error && typeof data.error === 'object' ? data.error : undefined;
@@ -108,7 +113,7 @@ export class APIError extends Error {
       nestedError?.code || data?.code || 'UNKNOWN_ERROR',
       response.status,
       data,
-      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
     );
   }
 }
@@ -133,14 +138,18 @@ export function storeSessionToken(sessionId: string, token: string): void {
   cachedSessionToken = { sessionId, token };
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(SESSION_TOKEN_KEY, JSON.stringify(cachedSessionToken));
+    window.localStorage.setItem(
+      SESSION_TOKEN_KEY,
+      JSON.stringify(cachedSessionToken),
+    );
   } catch {
     // Storage unavailable — the in-memory copy still covers this page view
   }
 }
 
 export function getSessionToken(sessionId: string): string | null {
-  if (cachedSessionToken?.sessionId === sessionId) return cachedSessionToken.token;
+  if (cachedSessionToken?.sessionId === sessionId)
+    return cachedSessionToken.token;
   if (typeof window === 'undefined') return null;
 
   try {
@@ -186,7 +195,7 @@ interface RequestOptions {
  */
 async function fetchWithTimeout(
   url: string,
-  options: RequestInit & { timeout?: number } = {}
+  options: RequestInit & { timeout?: number } = {},
 ): Promise<Response> {
   const { timeout = config.timeout, ...fetchOptions } = options;
 
@@ -209,7 +218,7 @@ async function fetchWithTimeout(
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit & RequestOptions = {}
+  options: RequestInit & RequestOptions = {},
 ): Promise<T> {
   const url = `${config.baseUrl}${endpoint}`;
 
@@ -235,7 +244,7 @@ async function apiRequest<T>(
       'Unable to reach Panopticlick API. Falling back to local mode.',
       'API_UNAVAILABLE',
       0,
-      error
+      error,
     );
   }
 
@@ -246,7 +255,7 @@ async function apiRequest<T>(
       throw new APIError(
         'Server returned non-JSON response',
         'INVALID_RESPONSE',
-        response.status
+        response.status,
       );
     }
     return {} as T;
@@ -274,7 +283,11 @@ export const api = {
      */
     async submit(
       fingerprint: FingerprintPayload,
-      options?: { storeData?: boolean; consent?: boolean; turnstileToken?: string }
+      options?: {
+        storeData?: boolean;
+        consent?: boolean;
+        turnstileToken?: string;
+      },
     ): Promise<{
       success: boolean;
       sessionId: string;
@@ -289,7 +302,10 @@ export const api = {
       // Start session
       const start = await apiRequest<ScanStartResponse>('/v1/scan/start', {
         method: 'POST',
-        body: JSON.stringify({ consent, turnstileToken: options?.turnstileToken }),
+        body: JSON.stringify({
+          consent,
+          turnstileToken: options?.turnstileToken,
+        }),
       });
 
       if (start.sessionToken) {
@@ -323,7 +339,11 @@ export const api = {
         try {
           const stats = await apiRequest<{
             found: boolean;
-            rarity?: { score: number; percentile: number; similarFingerprints: number };
+            rarity?: {
+              score: number;
+              percentile: number;
+              similarFingerprints: number;
+            };
             total?: number;
           }>(`/v1/stats/compare/${collect.hashes.full}`);
 
@@ -362,7 +382,9 @@ export const api = {
      * payload through `lib/rtb-mapping` because the deployed API can be older
      * than the contract.
      */
-    async simulate(fingerprint: FingerprintPayload): Promise<RTBSimulateResponse> {
+    async simulate(
+      fingerprint: FingerprintPayload,
+    ): Promise<RTBSimulateResponse> {
       return apiRequest('/v1/rtb/simulate', {
         method: 'POST',
         body: JSON.stringify({ fingerprint }),
@@ -378,6 +400,7 @@ export const api = {
      * Run DNS leak test
      */
     async dnsLeakTest(): Promise<{
+      status: 'passed' | 'failed' | 'inconclusive';
       leaking: boolean;
       resolvers: Array<{
         ip: string;
@@ -392,22 +415,36 @@ export const api = {
       const res = await apiRequest<{
         success: boolean;
         resolver: { ip: string; provider: string; isEncrypted: boolean };
-        leakTest: { passed: boolean; leakedIPs: string[] };
+        leakTest: {
+          passed: boolean;
+          leakedIPs: string[];
+          status?: 'passed' | 'failed' | 'inconclusive';
+        };
       }>('/v1/defense/dns');
 
+      // Older workers returned `passed: true` even though they could not
+      // observe the visitor's device resolver. Treat a missing status as
+      // inconclusive during rolling deployment rather than showing a false
+      // secure result.
+      const status = res.leakTest.status ?? 'inconclusive';
+
       return {
-        leaking: !res.leakTest.passed,
-        resolvers: [
-          {
-            ip: res.resolver.ip,
-            hostname: undefined,
-            isp: res.resolver.provider,
-            country: undefined,
-            isSecure: res.resolver.isEncrypted,
-          },
-        ],
-        provider: res.resolver.provider,
-        isEncrypted: res.resolver.isEncrypted,
+        status,
+        leaking: status === 'failed',
+        resolvers:
+          status === 'inconclusive'
+            ? []
+            : [
+                {
+                  ip: res.resolver.ip,
+                  hostname: undefined,
+                  isp: res.resolver.provider,
+                  country: undefined,
+                  isSecure: status === 'passed' && res.resolver.isEncrypted,
+                },
+              ],
+        provider: status === 'inconclusive' ? null : res.resolver.provider,
+        isEncrypted: status === 'passed' && res.resolver.isEncrypted,
       };
     },
   },
@@ -428,7 +465,11 @@ export const api = {
         {
           uniqueValues: number;
           averageBits: number;
-          topValues: Array<{ value: string; count: number; percentage: number }>;
+          topValues: Array<{
+            value: string;
+            count: number;
+            percentage: number;
+          }>;
         }
       >;
     }> {
@@ -458,7 +499,7 @@ export const api = {
      */
     async chat(
       messages: AIChatMessage[],
-      fingerprintContext?: AIChatContext
+      fingerprintContext?: AIChatContext,
     ): Promise<AIChatResponse> {
       // The worker caps history at 20 turns. The browser never sends a system
       // turn; policy remains owned by the worker.
@@ -477,7 +518,8 @@ export const api = {
         // `{ prompt }`. Retry validation failures once with the last user turn;
         // network/authorization/rate-limit errors must keep their real status.
         const legacyCompatible =
-          error instanceof APIError && (error.status === 400 || error.status === 422);
+          error instanceof APIError &&
+          (error.status === 400 || error.status === 422);
         const latestUserMessage = [...recentMessages]
           .reverse()
           .find((message) => message.role === 'user');
@@ -529,7 +571,7 @@ export const api = {
         throw new APIError(
           'The ownership token for this session is not available on this device.',
           'SESSION_TOKEN_MISSING',
-          401
+          401,
         );
       }
 

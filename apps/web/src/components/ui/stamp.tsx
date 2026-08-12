@@ -4,7 +4,14 @@ import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-type StampVariant = 'classified' | 'verified' | 'exposed' | 'protected' | 'denied' | 'custom';
+type StampVariant =
+  | 'classified'
+  | 'verified'
+  | 'exposed'
+  | 'protected'
+  | 'pending'
+  | 'denied'
+  | 'custom';
 
 interface StampProps {
   variant?: StampVariant;
@@ -19,6 +26,7 @@ const variantStyles: Record<StampVariant, string> = {
   verified: 'border-stamp-blue text-stamp-blue',
   exposed: 'border-alert-red text-alert-red',
   protected: 'border-alert-green text-alert-green',
+  pending: 'border-alert-orange text-alert-orange',
   denied: 'border-ink text-ink',
   custom: '',
 };
@@ -58,7 +66,7 @@ export function Stamp({
         'transform -rotate-3 shadow-stamp',
         sizeStyles[size],
         variantStyles[variant],
-        className
+        className,
       )}
       {...(shouldAnimate
         ? {
@@ -141,7 +149,7 @@ export function DateStamp({ date, className }: DateStampProps) {
         'inline-flex flex-col items-center px-3 py-2',
         'border-2 border-ink-200 rounded-sm font-mono text-xs',
         'transform -rotate-2',
-        className
+        className,
       )}
     >
       <span className="text-ink-200 uppercase">Recorded</span>
@@ -166,7 +174,7 @@ export function CaseNumber({ number, className }: CaseNumberProps) {
         'inline-flex items-center gap-2 px-3 py-1',
         'bg-ink text-paper font-mono text-sm',
         'rounded-sm shadow-sm',
-        className
+        className,
       )}
     >
       <span className="text-paper-300">CASE NO.</span>

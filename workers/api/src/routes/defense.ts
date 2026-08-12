@@ -5,7 +5,6 @@
 
 import { Hono } from 'hono';
 import type { Env } from '../types';
-import { getRequestContext } from '../middleware/context';
 import {
   DefenseBlockerSchema,
   DefenseTestSchema,
@@ -40,7 +39,7 @@ defense.post('/blocker', async (c) => {
           message: 'Request body must contain valid JSON',
         },
       },
-      400
+      400,
     );
   }
 
@@ -51,10 +50,15 @@ defense.post('/blocker', async (c) => {
       return c.json({ success: false, error: validation.error }, 400);
     }
 
-    const { loadedResources, blockedResources, testResults, sessionId } = validation.data;
+    const { loadedResources, blockedResources, testResults, sessionId } =
+      validation.data;
 
     // Analyze blocker effectiveness
-    const analysis = analyzeBlocker(loadedResources, blockedResources, testResults);
+    const analysis = analyzeBlocker(
+      loadedResources,
+      blockedResources,
+      testResults,
+    );
 
     const response: DefenseBlockerResponse = {
       success: true,
@@ -77,22 +81,17 @@ defense.post('/blocker', async (c) => {
  * Test DNS privacy (returns resolver info)
  */
 defense.get('/dns', async (c) => {
-  const ctx = getRequestContext(c);
-
-  // Cloudflare can tell us about the DNS resolver
-  const cf = c.req.raw.cf;
-
   const response: DefenseDNSResponse = {
     success: true,
     resolver: {
-      ip: 'hidden', // We don't expose actual resolver IP
-      provider: detectDNSProvider(cf),
-      isEncrypted: detectDNSEncryption(cf),
-      isCloudflare: ctx.asn === '13335',
+      ip: 'unavailable',
+      provider: 'Unknown',
+      isEncrypted: false,
     },
     leakTest: {
-      passed: true, // Would need actual leak test
+      passed: false,
       leakedIPs: [],
+      status: 'inconclusive',
     },
   };
 
@@ -115,7 +114,7 @@ defense.post('/test', async (c) => {
           message: 'Request body must contain valid JSON',
         },
       },
-      400
+      400,
     );
   }
 
@@ -130,9 +129,8 @@ defense.post('/test', async (c) => {
     const clientTests = blockerResults;
 
     // Import valuation engine
-    const { analyzeDefenses, generateHardeningGuide } = await import(
-      '@panopticlick/valuation-engine'
-    );
+    const { analyzeDefenses, generateHardeningGuide } =
+      await import('@panopticlick/valuation-engine');
 
     // Analyze defenses
     const defenseStatus = analyzeDefenses(fingerprint as FingerprintPayload, {
@@ -143,7 +141,9 @@ defense.post('/test', async (c) => {
     });
 
     // Generate hardening guide
-    const hardeningGuide = generateHardeningGuide(fingerprint as FingerprintPayload);
+    const hardeningGuide = generateHardeningGuide(
+      fingerprint as FingerprintPayload,
+    );
 
     const response: DefenseTestResponse = {
       success: true,
@@ -163,11 +163,13 @@ defense.post('/test', async (c) => {
     // Store defense audit results (new table)
     if (sessionId) {
       const auditId = crypto.randomUUID();
-      await c.env.DB.prepare(`
+      await c.env.DB.prepare(
+        `
         INSERT INTO defense_audits
         (id, session_id, blocker_detected, effectiveness_score, privacy_tier, dnt_enabled, gpc_enabled)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
+      `,
+      )
         .bind(
           auditId,
           sessionId,
@@ -175,7 +177,7 @@ defense.post('/test', async (c) => {
           defenseStatus.score,
           defenseStatus.overallTier,
           fingerprint.software?.doNotTrack ? 1 : 0,
-          0 // GPC detection would require additional client-side check
+          0, // GPC detection would require additional client-side check
         )
         .run();
     }
@@ -183,7 +185,10 @@ defense.post('/test', async (c) => {
     return c.json(response);
   } catch (error) {
     console.error('Defense test error:', error);
-    return c.json({ success: false, error: 'Failed to run defense tests' }, 500);
+    return c.json(
+      { success: false, error: 'Failed to run defense tests' },
+      500,
+    );
   }
 });
 
@@ -202,9 +207,8 @@ defense.post('/recommendations', async (c) => {
 
     const { fingerprint } = validation.data;
 
-    const { analyzeDefenses, generateHardeningGuide } = await import(
-      '@panopticlick/valuation-engine'
-    );
+    const { analyzeDefenses, generateHardeningGuide } =
+      await import('@panopticlick/valuation-engine');
 
     const status = analyzeDefenses(fingerprint as FingerprintPayload, {
       adBlockerDetected: false,
@@ -226,7 +230,10 @@ defense.post('/recommendations', async (c) => {
     return c.json(response);
   } catch (error) {
     console.error('Defense recommendations error:', error);
-    return c.json({ success: false, error: 'Failed to generate recommendations' }, 500);
+    return c.json(
+      { success: false, error: 'Failed to generate recommendations' },
+      500,
+    );
   }
 });
 
@@ -272,7 +279,7 @@ defense.get('/bait/:category', async (c) => {
 function analyzeBlocker(
   loaded: string[],
   blocked: string[],
-  testResults: Record<string, boolean>
+  testResults: Record<string, boolean>,
 ): {
   detected: boolean;
   name: string | null;
@@ -280,7 +287,8 @@ function analyzeBlocker(
   categories: Record<string, { blocked: number; total: number }>;
   recommendations: string[];
 } {
-  const detected = blocked.length > 0 || Object.values(testResults).some((v) => v);
+  const detected =
+    blocked.length > 0 || Object.values(testResults).some((v) => v);
 
   // Try to identify the blocker
   let name: string | null = null;
@@ -296,7 +304,8 @@ function analyzeBlocker(
 
   // Calculate effectiveness score
   const totalTests = loaded.length + blocked.length;
-  const score = totalTests > 0 ? Math.round((blocked.length / totalTests) * 100) : 0;
+  const score =
+    totalTests > 0 ? Math.round((blocked.length / totalTests) * 100) : 0;
 
   // Categorize blocked resources
   const categories: Record<string, { blocked: number; total: number }> = {
@@ -360,30 +369,6 @@ function categorizeResource(resource: string): string {
     return 'social';
   }
   return 'tracking';
-}
-
-function detectDNSProvider(
-  cf: IncomingRequestCfProperties | CfProperties<unknown> | undefined
-): string {
-  if (!cf) return 'Unknown';
-
-  // This is a simplification - in reality you'd need to check
-  // the actual DNS resolver being used
-  const asn = cf.asn?.toString() || '';
-
-  if (asn === '13335') return 'Cloudflare';
-  if (asn === '15169') return 'Google';
-  if (asn === '8075') return 'Microsoft';
-
-  return 'ISP Default';
-}
-
-function detectDNSEncryption(
-  cf: IncomingRequestCfProperties | CfProperties<unknown> | undefined
-): boolean {
-  // This is a heuristic - can't truly detect DNS encryption from here
-  // Would need client-side testing
-  return false;
 }
 
 export { defense };

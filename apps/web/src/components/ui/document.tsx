@@ -106,7 +106,10 @@ export function DocumentHeader({
             </div>
           )}
           {date && (
-            <div className="font-mono text-xs text-ink-300 mt-1">
+            <div
+              className="font-mono text-xs text-ink-300 mt-1"
+              suppressHydrationWarning
+            >
               {new Date(date).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
